@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 215 25% 16%;
+    --foreground: 210 40% 99%;
+    --card: 215 25% 20%;
+    --card-foreground: 210 40% 99%;
+    --popover: 215 25% 20%;
+    --popover-foreground: 210 40% 99%;
+    --primary: 44 89% 62%;
+    --primary-foreground: 215 25% 16%;
+    --secondary: 215 25% 25%;
+    --secondary-foreground: 210 40% 99%;
+    --muted: 215 25% 25%;
+    --muted-foreground: 210 40% 70%;
+    --accent: 44 89% 62%;
+    --accent-foreground: 215 25% 16%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 99%;
+    --border: 215 25% 30%;
+    --input: 215 25% 30%;
+    --ring: 44 89% 62%;
+    --radius: 0.5rem;
+
+    /* Brand colors */
+    --brand-yellow: 44 89% 62%;
+    --brand-dark: 215 25% 16%;
+    --brand-light: 210 40% 99%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--brand-dark));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--brand-yellow));
+  @apply rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--brand-yellow) / 0.8);
+}
+
+/* Smooth animations */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Gradient text animation */
+@keyframes gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+}
+
+/* Brand gradient */
+.brand-gradient {
+  background: linear-gradient(135deg, hsl(var(--brand-yellow)) 0%, hsl(var(--brand-dark)) 100%);
+}
+
+/* Yellow accent */
+.accent-yellow {
+  color: hsl(var(--brand-yellow));
+}
+
+.bg-accent-yellow {
+  background-color: hsl(var(--brand-yellow));
+}
+
+/* Dark background */
+.bg-brand-dark {
+  background-color: hsl(var(--brand-dark));
+}
+
+/* Light background */
+.bg-brand-light {
+  background-color: hsl(var(--brand-light));
+}
+
+/* Text colors */
+.text-brand-light {
+  color: hsl(var(--brand-light));
+}
+
+.text-brand-dark {
+  color: hsl(var(--brand-dark));
+}
+
+.text-brand-yellow {
+  color: hsl(var(--brand-yellow));
+}
