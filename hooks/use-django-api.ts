@@ -1,23 +1,38 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
-import { apiClient, type DjangoModels, type APIResponse, type PaginatedResponse } from '@/lib/django-api-client'
+import { useState, useEffect, useCallback } from "react"
+import {
+  apiClient,
+  type User,
+  type SubscriptionPlan,
+  type SubscriptionStatus,
+  type PaymentHistory,
+  type Notification,
+} from "@/lib/django-api-client"
 
 // Hook pour l'authentification
 export function useAuth() {
-  const [user, setUser] = useState<DjangoModels['User'] | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!apiClient.isAuthenticated()) {
+        setLoading(false)
+        return
+      }
+
       try {
         const response = await apiClient.getProfile()
         if (response.data) {
           setUser(response.data)
+        } else {
+          apiClient.clearTokens()
         }
       } catch (err) {
-        console.error('Auth check failed:', err)
+        console.error("Auth check failed:", err)
+        apiClient.clearTokens()
       } finally {
         setLoading(false)
       }
@@ -29,18 +44,18 @@ export function useAuth() {
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true)
     setError(null)
-    
+
     try {
-      const response = await apiClient.login({ email, password })
+      const response = await apiClient.login(email, password)
       if (response.data) {
         setUser(response.data.user)
         return { success: true, user: response.data.user }
       } else {
-        setError(response.error || 'Login failed')
+        setError(response.error || "Login failed")
         return { success: false, error: response.error }
       }
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'Login failed'
+      const error = err instanceof Error ? err.message : "Login failed"
       setError(error)
       return { success: false, error }
     } finally {
@@ -48,37 +63,23 @@ export function useAuth() {
     }
   }, [])
 
-  const register = useCallback(async (data: {
-    email: string
-    password: string
-    first_name?: string
-    last_name?: string
-    wallet_address?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.register(data)
-      if (response.data) {
-        setUser(response.data.user)
-        return { success: true, user: response.data.user }
-      } else {
-        setError(response.error || 'Registration failed')
-        return { success: false, error: response.error }
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Registration failed'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const logout = useCallback(async () => {
-    await apiClient.logout()
+  const logout = useCallback(() => {
+    apiClient.logout()
     setUser(null)
+  }, [])
+
+  const refreshProfile = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await apiClient.getProfile()
+      if (response.data) {
+        setUser(response.data)
+      }
+    } catch (err) {
+      console.error("Profile refresh failed:", err)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   return {
@@ -86,119 +87,31 @@ export function useAuth() {
     loading,
     error,
     login,
-    register,
     logout,
+    refreshProfile,
     isAuthenticated: !!user,
   }
 }
 
-// Hook pour les plans
-export function usePlans() {
-  const [plans, setPlans] = useState<DjangoModels['SubscriptionPlan'][]>([])
+// Hook pour les plans d'abonnement
+export function useSubscriptionPlans() {
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pagination, setPagination] = useState({
-    count: 0,
-    next: null as string | null,
-    previous: null as string | null,
-  })
 
-  const fetchPlans = useCallback(async (params?: {
-    page?: number
-    page_size?: number
-    status?: string
-    search?: string
-  }) => {
+  const fetchPlans = useCallback(async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
-      const response = await apiClient.getPlans(params)
+      const response = await apiClient.getPlans()
       if (response.data) {
-        setPlans(response.data.results)
-        setPagination({
-          count: response.data.count,
-          next: response.data.next,
-          previous: response.data.previous,
-        })
+        setPlans(response.data)
       } else {
-        setError(response.error || 'Failed to fetch plans')
+        setError(response.error || "Failed to fetch plans")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch plans')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const createPlan = useCallback(async (data: {
-    name: string
-    description?: string
-    amount: number
-    currency: 'ALGO' | 'USDC'
-    interval: 'monthly' | 'yearly'
-    features?: string[]
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.createPlan(data)
-      if (response.data) {
-        setPlans(prev => [response.data!, ...prev])
-        return { success: true, plan: response.data }
-      } else {
-        setError(response.error || 'Failed to create plan')
-        return { success: false, error: response.error }
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to create plan'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const updatePlan = useCallback(async (id: string, data: Partial<DjangoModels['SubscriptionPlan']>) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.updatePlan(id, data)
-      if (response.data) {
-        setPlans(prev => prev.map(plan => plan.id === id ? response.data! : plan))
-        return { success: true, plan: response.data }
-      } else {
-        setError(response.error || 'Failed to update plan')
-        return { success: false, error: response.error }
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to update plan'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const deletePlan = useCallback(async (id: string) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.deletePlan(id)
-      if (response.status === 204) {
-        setPlans(prev => prev.filter(plan => plan.id !== id))
-        return { success: true }
-      } else {
-        setError(response.error || 'Failed to delete plan')
-        return { success: false, error: response.error }
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to delete plan'
-      setError(error)
-      return { success: false, error }
+      setError(err instanceof Error ? err.message : "Failed to fetch plans")
     } finally {
       setLoading(false)
     }
@@ -212,17 +125,128 @@ export function usePlans() {
     plans,
     loading,
     error,
-    pagination,
-    fetchPlans,
-    createPlan,
-    updatePlan,
-    deletePlan,
+    refetch: fetchPlans,
   }
 }
 
-// Hook pour les abonnés
-export function useSubscribers() {
-  const [subscribers, setSubscribers] = useState<DjangoModels['Subscriber'][]>([])
+// Hook pour l'abonnement utilisateur
+export function useSubscription() {
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchSubscription = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await apiClient.getSubscriptionStatus()
+      if (response.data) {
+        setSubscription(response.data)
+      } else if (response.status === 404) {
+        setSubscription(null)
+      } else {
+        setError(response.error || "Failed to fetch subscription")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch subscription")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const subscribe = useCallback(async (planId: number) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await apiClient.subscribe(planId)
+      if (response.data) {
+        setSubscription(response.data.subscription)
+        return {
+          success: true,
+          subscription: response.data.subscription,
+          paymentRequired: response.data.payment_required,
+          paymentAmount: response.data.payment_amount,
+          paymentCurrency: response.data.payment_currency,
+        }
+      } else {
+        setError(response.error || "Failed to subscribe")
+        return { success: false, error: response.error }
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Failed to subscribe"
+      setError(error)
+      return { success: false, error }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const cancel = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await apiClient.cancelSubscription()
+      if (response.data) {
+        await fetchSubscription()
+        return { success: true, message: response.data.message }
+      } else {
+        setError(response.error || "Failed to cancel subscription")
+        return { success: false, error: response.error }
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Failed to cancel subscription"
+      setError(error)
+      return { success: false, error }
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchSubscription])
+
+  const reactivate = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await apiClient.reactivateSubscription()
+      if (response.data) {
+        await fetchSubscription()
+        return { success: true, message: response.data.message }
+      } else {
+        setError(response.error || "Failed to reactivate subscription")
+        return { success: false, error: response.error }
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Failed to reactivate subscription"
+      setError(error)
+      return { success: false, error }
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchSubscription])
+
+  useEffect(() => {
+    if (apiClient.isAuthenticated()) {
+      fetchSubscription()
+    }
+  }, [fetchSubscription])
+
+  return {
+    subscription,
+    loading,
+    error,
+    subscribe,
+    cancel,
+    reactivate,
+    refetch: fetchSubscription,
+  }
+}
+
+// Hook pour l'historique des paiements
+export function usePaymentHistory() {
+  const [payments, setPayments] = useState<PaymentHistory[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
@@ -231,267 +255,185 @@ export function useSubscribers() {
     previous: null as string | null,
   })
 
-  const fetchSubscribers = useCallback(async (params?: {
-    page?: number
-    page_size?: number
-    status?: string
-    plan?: string
-    search?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.getSubscribers(params)
-      if (response.data) {
-        setSubscribers(response.data.results)
-        setPagination({
-          count: response.data.count,
-          next: response.data.next,
-          previous: response.data.previous,
-        })
-      } else {
-        setError(response.error || 'Failed to fetch subscribers')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch subscribers')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const fetchPayments = useCallback(
+    async (params?: {
+      page?: number
+      page_size?: number
+      status?: string
+      currency?: string
+    }) => {
+      setLoading(true)
+      setError(null)
 
-  const createSubscriber = useCallback(async (data: {
-    plan: string
-    wallet_address: string
-    email?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.createSubscriber(data)
-      if (response.data) {
-        setSubscribers(prev => [response.data!, ...prev])
-        return { success: true, subscriber: response.data }
-      } else {
-        setError(response.error || 'Failed to create subscriber')
-        return { success: false, error: response.error }
+      try {
+        const response = await apiClient.getPaymentHistory(params)
+        if (response.data) {
+          setPayments(response.data.results)
+          setPagination({
+            count: response.data.count,
+            next: response.data.next,
+            previous: response.data.previous,
+          })
+        } else {
+          setError(response.error || "Failed to fetch payments")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch payments")
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to create subscriber'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
-  const cancelSubscriber = useCallback(async (id: string) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.cancelSubscriber(id)
-      if (response.data) {
-        setSubscribers(prev => prev.map(sub => sub.id === id ? response.data! : sub))
-        return { success: true, subscriber: response.data }
-      } else {
-        setError(response.error || 'Failed to cancel subscriber')
-        return { success: false, error: response.error }
+  const triggerSwap = useCallback(
+    async (paymentId: number) => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await apiClient.triggerSwap(paymentId)
+        if (response.data) {
+          await fetchPayments()
+          return {
+            success: true,
+            swapInitiated: response.data.swap_initiated,
+            transactionId: response.data.swap_transaction_id,
+            message: response.data.message,
+          }
+        } else {
+          setError(response.error || "Failed to trigger swap")
+          return { success: false, error: response.error }
+        }
+      } catch (err) {
+        const error = err instanceof Error ? err.message : "Failed to trigger swap"
+        setError(error)
+        return { success: false, error }
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to cancel subscriber'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [fetchPayments],
+  )
 
   useEffect(() => {
-    fetchSubscribers()
-  }, [fetchSubscribers])
+    if (apiClient.isAuthenticated()) {
+      fetchPayments()
+    }
+  }, [fetchPayments])
 
   return {
-    subscribers,
+    payments,
     loading,
     error,
     pagination,
-    fetchSubscribers,
-    createSubscriber,
-    cancelSubscriber,
+    fetchPayments,
+    triggerSwap,
   }
 }
 
-// Hook pour les analytics
-export function useAnalytics() {
-  const [overview, setOverview] = useState<any>(null)
-  const [revenueData, setRevenueData] = useState<any>(null)
-  const [subscriberData, setSubscriberData] = useState<any>(null)
+// Hook pour les notifications
+export function useNotifications() {
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
 
-  const fetchOverview = useCallback(async (params?: {
-    period?: '7d' | '30d' | '90d' | '1y'
-    date_from?: string
-    date_to?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.getAnalyticsOverview(params)
-      if (response.data) {
-        setOverview(response.data)
-      } else {
-        setError(response.error || 'Failed to fetch analytics')
+  const fetchNotifications = useCallback(
+    async (params?: {
+      page?: number
+      page_size?: number
+      is_read?: boolean
+    }) => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await apiClient.getNotifications(params)
+        if (response.data) {
+          setNotifications(response.data.results)
+          setUnreadCount(response.data.results.filter((n) => !n.is_read).length)
+        } else {
+          setError(response.error || "Failed to fetch notifications")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch notifications")
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch analytics')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
-  const fetchRevenueAnalytics = useCallback(async (params?: {
-    period?: '7d' | '30d' | '90d' | '1y'
-    date_from?: string
-    date_to?: string
-    granularity?: 'day' | 'week' | 'month'
-  }) => {
-    setLoading(true)
-    setError(null)
-    
+  const markAsRead = useCallback(async (notificationId: number) => {
     try {
-      const response = await apiClient.getRevenueAnalytics(params)
+      const response = await apiClient.markNotificationAsRead(notificationId)
       if (response.data) {
-        setRevenueData(response.data)
-      } else {
-        setError(response.error || 'Failed to fetch revenue analytics')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch revenue analytics')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const fetchSubscriberAnalytics = useCallback(async (params?: {
-    period?: '7d' | '30d' | '90d' | '1y'
-    date_from?: string
-    date_to?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.getSubscriberAnalytics(params)
-      if (response.data) {
-        setSubscriberData(response.data)
-      } else {
-        setError(response.error || 'Failed to fetch subscriber analytics')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch subscriber analytics')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return {
-    overview,
-    revenueData,
-    subscriberData,
-    loading,
-    error,
-    fetchOverview,
-    fetchRevenueAnalytics,
-    fetchSubscriberAnalytics,
-  }
-}
-
-// Hook pour les webhooks
-export function useWebhooks() {
-  const [webhooks, setWebhooks] = useState<DjangoModels['Webhook'][]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchWebhooks = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.getWebhooks()
-      if (response.data) {
-        setWebhooks(response.data.results)
-      } else {
-        setError(response.error || 'Failed to fetch webhooks')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch webhooks')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const createWebhook = useCallback(async (data: {
-    url: string
-    events: string[]
-    secret?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.createWebhook(data)
-      if (response.data) {
-        setWebhooks(prev => [response.data!, ...prev])
-        return { success: true, webhook: response.data }
-      } else {
-        setError(response.error || 'Failed to create webhook')
-        return { success: false, error: response.error }
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to create webhook'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const deleteWebhook = useCallback(async (id: string) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await apiClient.deleteWebhook(id)
-      if (response.status === 204) {
-        setWebhooks(prev => prev.filter(webhook => webhook.id !== id))
+        setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n)))
+        setUnreadCount((prev) => Math.max(0, prev - 1))
         return { success: true }
-      } else {
-        setError(response.error || 'Failed to delete webhook')
-        return { success: false, error: response.error }
       }
+      return { success: false, error: response.error }
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to delete webhook'
-      setError(error)
-      return { success: false, error }
-    } finally {
-      setLoading(false)
+      return { success: false, error: err instanceof Error ? err.message : "Failed to mark as read" }
+    }
+  }, [])
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const response = await apiClient.markAllNotificationsAsRead()
+      if (response.data) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+        setUnreadCount(0)
+        return { success: true }
+      }
+      return { success: false, error: response.error }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Failed to mark all as read" }
+    }
+  }, [])
+
+  const deleteNotification = useCallback(async (notificationId: number) => {
+    try {
+      const response = await apiClient.deleteNotification(notificationId)
+      if (response.status === 204) {
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
+        return { success: true }
+      }
+      return { success: false, error: response.error }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Failed to delete notification" }
     }
   }, [])
 
   useEffect(() => {
-    fetchWebhooks()
-  }, [fetchWebhooks])
+    if (apiClient.isAuthenticated()) {
+      fetchNotifications()
+    }
+  }, [fetchNotifications])
 
   return {
-    webhooks,
+    notifications,
+    unreadCount,
     loading,
     error,
-    fetchWebhooks,
-    createWebhook,
-    deleteWebhook,
+    fetchNotifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
   }
+}
+
+// Hook pour l'analytics
+export function useAnalytics() {
+  const trackEvent = useCallback(async (eventType: string, payload: Record<string, any> = {}) => {
+    try {
+      const response = await apiClient.trackEvent(eventType, payload)
+      return response.data?.tracked || false
+    } catch {
+      return false
+    }
+  }, [])
+
+  return { trackEvent }
 }
