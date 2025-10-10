@@ -2,12 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { apiClient } from "@/lib/django-api-client"
 import {
   LayoutDashboard,
   CreditCard,
@@ -37,8 +38,23 @@ const navigation = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [authReady, setAuthReady] = useState(false)
+
+  useEffect(() => {
+    const token = apiClient.getAccessToken()
+    if (!token) {
+      window.location.replace("/auth/signin")
+      return
+    }
+    setAuthReady(true)
+  }, [])
+
+  const handleSignOut = () => {
+    apiClient.logout()
+  }
 
   return (
+    authReady ? (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar */}
       <div className={cn("fixed inset-0 z-50 lg:hidden", sidebarOpen ? "block" : "hidden")}>
@@ -105,12 +121,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu className="h-6 w-6" />
           </Button>
           <div className="flex-1" />
-          <Link href="/auth/signin">
-            <Button variant="ghost">Sign Out</Button>
-          </Link>
+          <Button variant="ghost" onClick={handleSignOut}>Sign Out</Button>
         </div>
         <main className="p-4 lg:p-8">{children}</main>
       </div>
     </div>
+    ) : (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    )
   )
 }

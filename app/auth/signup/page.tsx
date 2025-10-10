@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
+import { apiClient } from "@/lib/django-api-client"
 
 type AccountType = "individual" | "business"
 
@@ -89,12 +90,23 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Redirect to dashboard
-    window.location.href = "/dashboard"
+    try {
+      const resp = await apiClient.register(
+        formData.email,
+        formData.password,
+        `${formData.firstName}${formData.lastName}`.toLowerCase() || undefined,
+        formData.walletAddress || undefined,
+      )
+      if (resp.error || !resp.data) {
+        console.log("register failed", resp.error)
+        setIsLoading(false)
+        return
+      }
+      window.location.href = "/dashboard"
+    } catch (e) {
+      console.log("register error", e)
+      setIsLoading(false)
+    }
   }
 
   const canProceedToStep2 = () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { DollarSign, Users, CreditCard, ArrowUpRight, ArrowDownRight, Activity, Wallet, Globe } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
 import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from "recharts"
 import Link from "next/link"
+import { apiClient } from "@/lib/django-api-client"
 
 // Mock data
 const revenueData = [
@@ -84,6 +85,19 @@ const overview = {
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d">("7d")
+  const [authReady, setAuthReady] = useState(false)
+  useEffect(() => {
+    const token = apiClient.getAccessToken()
+    if (!token) {
+      window.location.replace("/auth/signin")
+      return
+    }
+    setAuthReady(true)
+  }, [])
+
+  if (!authReady) {
+    return null
+  }
 
   const formatCurrency = (value: number, currency = "ALGO") => {
     return `${value.toFixed(2)} ${currency}`

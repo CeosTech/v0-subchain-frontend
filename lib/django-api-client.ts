@@ -249,6 +249,28 @@ class DjangoAPIClient {
   }
 
   /**
+   * Inscription utilisateur
+   * POST /api/auth/register/
+   */
+  async register(email: string, password: string, username?: string, wallet_address?: string) {
+    const payload: Record<string, any> = { email, password }
+    if (username) payload.username = username
+    if (wallet_address) payload.wallet_address = wallet_address
+    const response = await this.request<{
+      access: string
+      refresh: string
+      user: User
+    }>("/api/auth/register/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+    if (response.data) {
+      this.setTokens(response.data.access, response.data.refresh)
+    }
+    return response
+  }
+
+  /**
    * Récupérer le profil utilisateur
    * GET /api/auth/profile/
    */

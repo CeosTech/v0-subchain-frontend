@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
+import { apiClient } from "@/lib/django-api-client"
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -21,21 +22,23 @@ export default function SignInPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Redirect to dashboard
-    window.location.href = "/dashboard"
+    try {
+      const resp = await apiClient.login(email, password)
+      if (resp.error || !resp.data) {
+        console.log("login failed", resp.error)
+        setIsLoading(false)
+        return
+      }
+      window.location.href = "/dashboard"
+    } catch (e) {
+      console.log("login error", e)
+      setIsLoading(false)
+    }
   }
 
   const handleWalletConnect = async () => {
     setIsLoading(true)
-
-    // Simulate wallet connection
     await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Redirect to dashboard
     window.location.href = "/dashboard"
   }
 
