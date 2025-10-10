@@ -18,20 +18,24 @@ export default function SignInPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
     try {
       const resp = await apiClient.login(email, password)
       if (resp.error || !resp.data) {
         console.log("login failed", resp.error)
+        setError(resp.error || "Invalid credentials")
         setIsLoading(false)
         return
       }
       window.location.href = "/dashboard"
     } catch (e) {
       console.log("login error", e)
+      setError("An unexpected error occurred")
       setIsLoading(false)
     }
   }
@@ -62,6 +66,11 @@ export default function SignInPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -70,6 +79,8 @@ export default function SignInPage() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setError(null)}
+                  className={error ? "border-red-500 focus-visible:ring-red-500" : ""}
                   required
                 />
               </div>
@@ -83,6 +94,8 @@ export default function SignInPage() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setError(null)}
+                    className={error ? "border-red-500 focus-visible:ring-red-500" : ""}
                     required
                   />
                   <Button
