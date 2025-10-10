@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
+import { connectWallet } from "@/lib/pera"
 
 type AccountType = "individual" | "business"
 
@@ -78,13 +79,15 @@ export default function SignUpPage() {
 
   const handleWalletConnect = async () => {
     setIsLoading(true)
-
-    // Simulate wallet connection
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setWalletConnected(true)
-    updateFormData("walletAddress", `ALGO${Math.random().toString(36).substr(2, 8).toUpperCase()}`)
-    setIsLoading(false)
+    try {
+      const address = await connectWallet()
+      setWalletConnected(true)
+      updateFormData("walletAddress", address)
+    } catch (e) {
+      console.log("pera connect error", e)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

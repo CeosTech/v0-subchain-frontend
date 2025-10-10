@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
+import { connectWallet } from "@/lib/pera"
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -42,8 +43,15 @@ export default function SignInPage() {
 
   const handleWalletConnect = async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    window.location.href = "/dashboard"
+    try {
+      const address = await connectWallet()
+      console.log("wallet connected", address)
+      window.location.href = "/dashboard"
+    } catch (e) {
+      console.log("pera connect error", e)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

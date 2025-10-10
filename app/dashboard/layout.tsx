@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/django-api-client"
+import { disconnectWallet } from "@/lib/pera"
 import {
   LayoutDashboard,
   CreditCard,
@@ -50,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   const handleSignOut = () => {
-    apiClient.logout()
+    disconnectWallet().finally(() => apiClient.logout())
   }
 
   return (
