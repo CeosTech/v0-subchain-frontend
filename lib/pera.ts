@@ -35,5 +35,3 @@ export async function disconnectWallet(): Promise<void> {
   try { await pera.disconnect() } catch {}
   try { localStorage.removeItem("pera_wallet_accounts") } catch {}
 }
-
-
