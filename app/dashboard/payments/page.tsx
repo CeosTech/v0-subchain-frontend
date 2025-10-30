@@ -1,312 +1,205 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Download, RefreshCw, DollarSign, TrendingUp, AlertCircle, CheckCircle } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { Search, RefreshCw, CheckCircle2, AlertCircle, PauseCircle } from "lucide-react"
+import { useTransactions } from "@/hooks/use-django-api"
 
-const mockPayments = [
+const statusConfig: Record<
+  string,
   {
-    id: "pay_1",
-    amount: 29.99,
-    currency: "EUR",
-    status: "completed",
-    subscriber: "john@example.com",
-    plan: "Pro Plan",
-    date: "2024-01-15",
-    commission: 0.72,
-    transactionId: "tx_algo_123",
-  },
-  {
-    id: "pay_2",
-    amount: 49.99,
-    currency: "USD",
-    status: "pending",
-    subscriber: "sarah@company.com",
-    plan: "Business Plan",
-    date: "2024-01-14",
-    commission: 1.2,
-    transactionId: "tx_algo_124",
-  },
-  {
-    id: "pay_3",
-    amount: 19.99,
-    currency: "EUR",
-    status: "failed",
-    subscriber: "mike@startup.io",
-    plan: "Starter Plan",
-    date: "2024-01-13",
-    commission: 0.48,
-    transactionId: "tx_algo_125",
-  },
-]
+    label: string
+    badge: "default" | "secondary" | "destructive"
+    icon: React.ComponentType<{ className?: string }>
+  }
+> = {
+  completed: { label: "Completed", badge: "default", icon: CheckCircle2 },
+  pending: { label: "Pending", badge: "secondary", icon: PauseCircle },
+  failed: { label: "Failed", badge: "destructive", icon: AlertCircle },
+  refunded: { label: "Refunded", badge: "secondary", icon: RefreshCw },
+}
 
 export default function PaymentsPage() {
+  const {
+    transactions,
+    loading,
+    error,
+    fetchPayments,
+  } = useTransactions()
+
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [refundAmount, setRefundAmount] = useState("")
-  const [refundReason, setRefundReason] = useState("")
-  const [selectedPayment, setSelectedPayment] = useState<any>(null)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
 
-  const filteredPayments = mockPayments.filter((payment) => {
-    const matchesSearch =
-      payment.subscriber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.plan.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction) => {
+      const matchesSearch = [transaction.id, transaction.type, transaction.currency, transaction.status]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
 
-  const handleRefund = () => {
-    if (!refundAmount || !refundReason) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      })
-      return
-    }
+      const matchesStatus = statusFilter === "all" || transaction.status === statusFilter
 
-    toast({
-      title: "Refund Processed",
-      description: `Refund of ${refundAmount}€ has been initiated for ${selectedPayment?.subscriber}`,
+      return matchesSearch && matchesStatus
     })
+  }, [transactions, searchTerm, statusFilter])
 
-    setRefundAmount("")
-    setRefundReason("")
-    setSelectedPayment(null)
-  }
+  const totals = useMemo(() => {
+    const completed = filteredTransactions.filter((trx) => trx.status === "completed")
+    const totalRevenue = completed.reduce((sum, trx) => sum + Number(trx.amount), 0)
+    const successRate =
+      filteredTransactions.length === 0
+        ? 0
+        : (completed.length / filteredTransactions.length) * 100
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-800">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Completed
-          </Badge>
-        )
-      case "pending":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800">
-            <RefreshCw className="w-3 h-3 mr-1" />
-            Pending
-          </Badge>
-        )
-      case "failed":
-        return (
-          <Badge className="bg-red-100 text-red-800">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Failed
-          </Badge>
-        )
-      default:
-        return <Badge variant="secondary">{status}</Badge>
+    return {
+      totalRevenue,
+      count: filteredTransactions.length,
+      successRate,
     }
-  }
-
-  const totalRevenue = mockPayments.filter((p) => p.status === "completed").reduce((sum, p) => sum + p.amount, 0)
-  const totalCommissions = mockPayments
-    .filter((p) => p.status === "completed")
-    .reduce((sum, p) => sum + p.commission, 0)
-  const successRate = (
-    (mockPayments.filter((p) => p.status === "completed").length / mockPayments.length) *
-    100
-  ).toFixed(1)
+  }, [filteredTransactions])
 
   return (
     <div className="space-y-6">
-      {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">€{totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Payments</h1>
+          <p className="text-muted-foreground">
+            Monitor all transactions processed through the platform.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => fetchPayments()} disabled={loading}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+      </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Commissions</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">€{totalCommissions.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">2.4% commission rate</p>
-          </CardContent>
+          <CardContent className="text-3xl font-bold">{filteredTransactions.length}</CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Completed volume</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{successRate}%</div>
-            <p className="text-xs text-muted-foreground">Payment success rate</p>
-          </CardContent>
+          <CardContent className="text-3xl font-bold">{totals.totalRevenue.toFixed(2)}</CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Payments</CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Success rate</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockPayments.length}</div>
-            <p className="text-xs text-muted-foreground">This month</p>
-          </CardContent>
+          <CardContent className="text-3xl font-bold">{totals.successRate.toFixed(1)}%</CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {error && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="text-destructive">Unable to load payments</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={() => fetchPayments()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Payments</CardTitle>
-          <CardDescription>Manage and track all payment transactions</CardDescription>
+          <CardTitle>Transactions</CardTitle>
+          <CardDescription>Search by reference, status or currency.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by subscriber or plan..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search…"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="pl-8"
+              />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+              <SelectTrigger className="md:w-48">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="refunded">Refunded</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Payments Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Payment ID</TableHead>
-                <TableHead>Subscriber</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Commission</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPayments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="font-mono text-sm">{payment.id}</TableCell>
-                  <TableCell>{payment.subscriber}</TableCell>
-                  <TableCell>{payment.plan}</TableCell>
-                  <TableCell>
-                    {payment.amount} {payment.currency}
-                  </TableCell>
-                  <TableCell>€{payment.commission}</TableCell>
-                  <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                  <TableCell>{payment.date}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4 mr-1" />
-                        Receipt
-                      </Button>
-                      {payment.status === "completed" && (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPayment(payment)
-                                setRefundAmount(payment.amount.toString())
-                              }}
-                            >
-                              Refund
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Refund Payment</DialogTitle>
-                              <DialogDescription>
-                                Process a refund for payment {payment.id} to {payment.subscriber}
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label htmlFor="refund-amount">Refund Amount</Label>
-                                <Input
-                                  id="refund-amount"
-                                  type="number"
-                                  value={refundAmount}
-                                  onChange={(e) => setRefundAmount(e.target.value)}
-                                  placeholder="Enter refund amount"
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="refund-reason">Reason for Refund *</Label>
-                                <Textarea
-                                  id="refund-reason"
-                                  value={refundReason}
-                                  onChange={(e) => setRefundReason(e.target.value)}
-                                  placeholder="Please provide a reason for this refund..."
-                                  required
-                                />
-                              </div>
-                              <div className="bg-yellow-50 p-3 rounded-lg">
-                                <p className="text-sm text-yellow-800">
-                                  ⚠️ This action cannot be undone. The refund will be processed immediately.
-                                </p>
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setSelectedPayment(null)}>
-                                Cancel
-                              </Button>
-                              <Button onClick={handleRefund} className="bg-red-600 hover:bg-red-700">
-                                Process Refund
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                    </div>
-                  </TableCell>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Transaction</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {loading && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      Loading transactions…
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!loading && filteredTransactions.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No transaction matches your filters.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {filteredTransactions.map((transaction) => {
+                  const config = statusConfig[transaction.status] ?? statusConfig.pending
+                  const Icon = config.icon
+                  return (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{transaction.id}</span>
+                          <span className="text-xs text-muted-foreground">{transaction.algo_tx_id ?? "—"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="capitalize">{transaction.type}</TableCell>
+                      <TableCell className="font-medium">
+                        {Number(transaction.amount).toFixed(2)} {transaction.currency}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={config.badge} className="flex items-center gap-1 capitalize">
+                          <Icon className="h-3 w-3" />
+                          {config.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{transaction.created_at ? new Date(transaction.created_at).toLocaleString() : "—"}</TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

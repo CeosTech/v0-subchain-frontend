@@ -93,12 +93,17 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    if (!formData.walletAddress) {
+      setIsLoading(false)
+      return
+    }
+
     try {
       const resp = await apiClient.register(
         formData.email,
         formData.password,
-        `${formData.firstName}${formData.lastName}`.toLowerCase() || undefined,
-        formData.walletAddress || undefined,
+        formData.walletAddress,
+        formData.email.split("@")[0] || undefined,
       )
       if (resp.error || !resp.data) {
         console.log("register failed", resp.error)

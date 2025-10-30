@@ -51,7 +51,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   const handleSignOut = () => {
-    disconnectWallet().finally(() => apiClient.logout())
+    disconnectWallet().finally(() => {
+      void apiClient.logout()
+    })
   }
 
   return (

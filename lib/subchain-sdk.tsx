@@ -1,6 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { apiClient, type Subscription as DjangoSubscription, type SubscriptionPlan } from "@/lib/django-api-client"
+import { connectWallet } from "@/lib/pera"
 
 // Types
 export interface SubChainConfig {
@@ -13,8 +15,8 @@ export interface Plan {
   id: string
   name: string
   amount: number
-  currency: 'ALGO' | 'USDC'
-  interval: 'monthly' | 'yearly'
+  currency: "ALGO" | "USDC"
+  interval: "monthly" | "yearly"
   description?: string
   features?: string[]
 }
@@ -22,7 +24,7 @@ export interface Plan {
 export interface Subscription {
   id: string
   planId: string
-  status: 'active' | 'cancelled' | 'paused' | 'past_due'
+  status: "active" | "cancelled" | "paused" | "past_due" | "pending"
   walletAddress: string
   startDate: string
   nextPaymentDate?: string
@@ -55,46 +57,61 @@ export function SubChainProvider({ config, children }: SubChainProviderProps) {
     setIsInitialized(true)
   }, [config])
 
-  const baseUrl = config.baseUrl || (config.testMode ? 'https://api-test.subchain.dev' : 'https://api.subchain.dev')
-
-  const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`)
+  const mapPlan = (plan: SubscriptionPlan): Plan => {
+    const primaryTier = plan.price_tiers?.[0]
+    return {
+      id: plan.id,
+      name: plan.name,
+      amount: primaryTier ? Number(primaryTier.unit_amount) : 0,
+      currency: (primaryTier?.currency ?? plan.metadata?.currency ?? "ALGO") as Plan["currency"],
+      interval: (plan.metadata?.interval as Plan["interval"]) || "monthly",
+      description: plan.description ?? undefined,
+      features: plan.features?.map((feature) => feature.name),
     }
+  }
 
-    return response.json()
+  const mapSubscription = (subscription: DjangoSubscription): Subscription => {
+    const planId = typeof subscription.plan === "object" ? subscription.plan.id : subscription.plan
+    return {
+      id: subscription.id,
+      planId,
+      status: (subscription.status as Subscription["status"]) ?? "active",
+      walletAddress: subscription.wallet_address,
+      startDate: subscription.created_at ?? new Date().toISOString(),
+      nextPaymentDate: subscription.next_billing_date ?? undefined,
+      totalPaid: Number(subscription.metadata?.total_paid ?? 0),
+    }
   }
 
   const subscribe = async (planId: string, walletAddress: string): Promise<Subscription> => {
-    return apiCall('/api/subscribers', {
-      method: 'POST',
-      body: JSON.stringify({ planId, walletAddress }),
-    })
+    const response = await apiClient.subscribe(planId, { walletAddress })
+    if (response.error || !response.data?.subscription) {
+      throw new Error(response.error ?? "Unable to create subscription")
+    }
+    return mapSubscription(response.data.subscription)
   }
 
   const getPlans = async (): Promise<Plan[]> => {
-    const response = await apiCall('/api/plans')
-    return response.plans || []
+    const response = await apiClient.getPlans()
+    if (response.error || !response.data) {
+      throw new Error(response.error ?? "Unable to load plans")
+    }
+    return response.data.map(mapPlan)
   }
 
   const getSubscriptions = async (walletAddress: string): Promise<Subscription[]> => {
-    const response = await apiCall(`/api/subscribers?wallet=${walletAddress}`)
-    return response.subscribers || []
+    const response = await apiClient.listSubscriptions({ wallet_address: walletAddress })
+    if (response.error || !response.data) {
+      throw new Error(response.error ?? "Unable to load subscriptions")
+    }
+    return response.data.results.map(mapSubscription)
   }
 
   const cancelSubscription = async (subscriptionId: string): Promise<void> => {
-    await apiCall(`/api/subscribers/${subscriptionId}`, {
-      method: 'DELETE',
-    })
+    const response = await apiClient.cancelSubscription(subscriptionId, { atPeriodEnd: true })
+    if (response.error) {
+      throw new Error(response.error)
+    }
   }
 
   const value: SubChainContextType = {
@@ -131,28 +148,27 @@ interface SubscribeButtonProps {
   onError?: (error: Error) => void
 }
 
-export function SubscribeButton({ 
-  planId, 
-  children = 'Subscribe', 
-  className = '',
+export function SubscribeButton({
+  planId,
+  children = "Subscribe",
+  className = "",
   onSuccess,
-  onError 
+  onError,
 }: SubscribeButtonProps) {
   const { subscribe } = useSubChain()
   const [loading, setLoading] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
 
   const handleSubscribe = async () => {
-    if (!walletAddress) {
-      // In a real implementation, this would trigger wallet connection
-      const mockWallet = `ALGO${Math.random().toString(36).substr(2, 8).toUpperCase()}`
-      setWalletAddress(mockWallet)
-      return
-    }
-
     setLoading(true)
     try {
-      const subscription = await subscribe(planId, walletAddress)
+      let address = walletAddress
+      if (!address) {
+        address = await connectWallet()
+        setWalletAddress(address)
+      }
+
+      const subscription = await subscribe(planId, address)
       onSuccess?.(subscription)
     } catch (error) {
       onError?.(error as Error)
@@ -167,7 +183,7 @@ export function SubscribeButton({
       disabled={loading}
       className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 ${className}`}
     >
-      {loading ? 'Processing...' : walletAddress ? children : 'Connect Wallet'}
+      {loading ? "Processing…" : walletAddress ? children : "Connect Wallet"}
     </button>
   )
 }

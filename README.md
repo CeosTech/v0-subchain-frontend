@@ -28,3 +28,12 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Backend Integration
+
+- Set `NEXT_PUBLIC_API_URL` (or `NEXT_PUBLIC_BACKEND_URL`) in your environment to point to the Django backend, e.g. `http://localhost:8000`.
+- Registration requires an Algorand wallet address; the UI captures it and `apiClient.register(email, password, walletAddress, username?)` forwards it to `/api/auth/register/`.
+- The shared API client (`lib/django-api-client.ts`) now targets the authenticated routes listed in `accounts/urls.py`, `subscriptions/urls.py`, etc., and automatically handles JWT refresh via `/api/auth/token/refresh/`.
+- Tokens are stored under `subchain_access_token` / `subchain_refresh_token` in `localStorage`; `apiClient.logout()` clears them and calls `/api/auth/logout/`.
+- Hooks in `hooks/use-django-api.ts` consume the new client and expose helpers for auth, subscriptions (including checkout + invoice flows), payments/transactions, notifications and analytics based on the backend contract.
+- Plan authoring in the dashboard uses `POST/PATCH/DELETE /api/subscriptions/plans/`; authenticate with an admin/staff account. A smoke test is provided: `ADMIN_ACCESS_TOKEN=... BACKEND_URL=http://localhost:8000 pnpm test:plans`.
