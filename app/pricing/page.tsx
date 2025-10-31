@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import Image from "next/image"
 
 const features = [
   {
@@ -117,12 +118,10 @@ export default function PricingPage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
-            <span className="text-xl font-bold">SubChain</span>
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={32} height={32} />
+            <span className="text-base font-semibold uppercase tracking-[0.2em] text-white/80">SubChain</span>
           </Link>
           <div className="hidden md:flex items-center space-x-6">
             <Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -412,38 +411,23 @@ export default function PricingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 px-4">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">S</span>
-                </div>
-                <span className="text-xl font-bold">SubChain</span>
-              </div>
-              <p className="text-muted-foreground">The easiest way to accept crypto subscriptions on Algorand</p>
+      <footer className="border-t border-white/10 bg-background/80 py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+            <div className="flex items-center gap-3">
+              <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={32} height={32} />
+              <span className="text-base font-semibold uppercase tracking-[0.2em] text-white/80">
+                SubChain
+              </span>
             </div>
-            <div>
-              <h3 className="font-semibold mb-4">Follow Us</h3>
-              <div className="flex space-x-4">
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="sr-only">Twitter</span>🐦
-                </a>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="sr-only">Discord</span>💬
-                </a>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="sr-only">GitHub</span>🐙
-                </a>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="sr-only">LinkedIn</span>💼
-                </a>
-              </div>
+            <div className="flex gap-6 text-sm text-muted-foreground">
+              <Link href="/pricing" className="hover:text-white">Pricing</Link>
+              <Link href="/docs" className="hover:text-white">Docs</Link>
+              <Link href="/faq" className="hover:text-white">FAQ</Link>
             </div>
           </div>
-          <div className="border-t mt-8 pt-8 text-center text-muted-foreground">
-            <p>&copy; 2025 SubChain. All rights reserved.</p>
+          <div className="mt-8 border-t border-white/10 pt-6 text-center text-muted-foreground">
+            <p>&copy; {new Date().getFullYear()} SubChain. All rights reserved.</p>
           </div>
         </div>
       </footer>

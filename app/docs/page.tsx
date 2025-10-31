@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function DocsPage() {
   const [copiedCode, setCopiedCode] = useState("")
@@ -50,14 +51,10 @@ export default function DocsPage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              SubChain
-            </span>
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={32} height={32} />
+            <span className="text-base font-semibold uppercase tracking-[0.2em] text-white/80">SubChain</span>
           </Link>
           <div className="flex items-center space-x-4">
             <Link href="/">

@@ -15,8 +15,6 @@ import {
   BarChart3,
   Coins,
 } from "lucide-react"
-
-import { HeroBackground } from "@/components/hero-background"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -98,11 +96,8 @@ const heroMetrics = [
 export default function HomePage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(124,58,237,0.18),transparent_55%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.18),transparent_65%),hsl(var(--background))]">
-      <div className="absolute inset-0">
-        <HeroBackground />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_90%,rgba(99,102,241,0.28),transparent_70%)] opacity-80" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black/40 via-transparent to-transparent" />
-      </div>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_90%,rgba(99,102,241,0.24),transparent_70%)] opacity-80" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
 
       <header className="relative z-30">
         <nav className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -116,7 +111,7 @@ export default function HomePage() {
             <div className="hidden items-center gap-8 text-sm font-medium text-white/70 md:flex">
               <Link href="/pricing" className="hover:text-white">Pricing</Link>
               <Link href="/docs" className="hover:text-white">Docs</Link>
-              <Link href="/security" className="hover:text-white">Security</Link>
+              <Link href="/faq" className="hover:text-white">FAQ</Link>
             </div>
             <div className="flex items-center gap-3">
               <Link href="/auth/signin">
@@ -390,20 +385,20 @@ export default function HomePage() {
               <Link href="/docs" className="block hover:text-white">
                 Documentation
               </Link>
-              <Link href="/playground" className="block hover:text-white">
-                API Playground
+              <Link href="/faq" className="block hover:text-white">
+                FAQ
               </Link>
             </div>
             <div className="space-y-3 text-sm text-white/55">
               <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/60">Company</h3>
-              <Link href="/security" className="block hover:text-white">
-                Security
-              </Link>
               <Link href="/privacy" className="block hover:text-white">
                 Privacy
               </Link>
               <Link href="/terms" className="block hover:text-white">
                 Terms
+              </Link>
+              <Link href="/auth/signup" className="block hover:text-white">
+                Create Account
               </Link>
             </div>
             <div className="space-y-3 text-sm text-white/55">
@@ -411,11 +406,11 @@ export default function HomePage() {
               <Link href="mailto:hello@subchain.xyz" className="block hover:text-white">
                 hello@subchain.xyz
               </Link>
-              <Link href="/docs#faq" className="block hover:text-white">
-                FAQs
+              <Link href="/faq" className="block hover:text-white">
+                Help Center
               </Link>
-              <Link href="/testnet" className="block hover:text-white">
-                Testnet Console
+              <Link href="/docs#api-reference" className="block hover:text-white">
+                API Reference
               </Link>
             </div>
           </div>

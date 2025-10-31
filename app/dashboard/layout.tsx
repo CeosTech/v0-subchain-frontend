@@ -62,9 +62,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile sidebar */}
       <div className={cn("fixed inset-0 z-50 lg:hidden", sidebarOpen ? "block" : "hidden")}>
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 w-64 bg-card border-r p-6">
-          <div className="flex items-center justify-between mb-8">
-            <Image src="/subchain-logo.png" alt="SubChain Logo" width={200} height={60} className="h-12 w-auto" />
+        <div className="fixed inset-y-0 left-0 w-64 bg-card border-r border-white/10 p-6 backdrop-blur-xl">
+          <div className="mb-8 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3">
+              <Image src="/assets/subchain-glyph.svg" alt="SubChain mark" width={32} height={32} />
+              <span className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">
+                SubChain
+              </span>
+            </Link>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
               <X className="h-6 w-6" />
             </Button>
@@ -75,8 +80,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
-                  pathname === item.href ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+                  "flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                  pathname === item.href
+                    ? "bg-white/10 text-white shadow-[0_10px_30px_-20px_rgba(99,102,241,0.8)]"
+                    : "text-white/60 hover:bg-white/5 hover:text-white",
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
@@ -90,18 +97,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-1 min-h-0 bg-card border-r">
-          <div className="flex items-center h-16 px-6 border-b">
-            <Image src="/subchain-logo.png" alt="SubChain Logo" width={200} height={60} className="h-12 w-auto" />
+        <div className="flex min-h-0 flex-1 flex-col border-r border-white/10 bg-card/90 backdrop-blur-xl">
+          <div className="flex h-16 items-center border-b border-white/10 px-6">
+            <Link href="/" className="flex items-center gap-3">
+              <Image src="/assets/subchain-glyph.svg" alt="SubChain mark" width={32} height={32} />
+              <span className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">
+                SubChain
+              </span>
+            </Link>
           </div>
-          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+          <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
-                  pathname === item.href ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+                  "flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                  pathname === item.href
+                    ? "bg-white/10 text-white shadow-[0_14px_40px_-24px_rgba(14,165,233,0.6)]"
+                    : "text-white/60 hover:bg-white/5 hover:text-white",
                 )}
               >
                 <item.icon className="h-5 w-5" />

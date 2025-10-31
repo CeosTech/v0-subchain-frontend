@@ -5,18 +5,17 @@ import { Scale, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
-            <span className="text-xl font-bold">SubChain</span>
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={32} height={32} />
+            <span className="text-base font-semibold uppercase tracking-[0.2em] text-white/80">SubChain</span>
           </Link>
           <Link href="/">
             <Button variant="ghost">

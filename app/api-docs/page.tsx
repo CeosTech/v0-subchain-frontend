@@ -396,7 +396,7 @@ echo "Subscription created: " . $subscription->id;
           </Link>
           <div className="flex items-center space-x-4">
             <Button variant="outline" asChild>
-              <Link href="/playground">API Playground</Link>
+              <Link href="/docs#api-reference">API Reference</Link>
             </Button>
             <Button asChild>
               <Link href="/dashboard">Dashboard</Link>

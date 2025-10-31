@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, User, Building, Wallet, ArrowRight, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,8 +12,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
 import { connectWallet } from "@/lib/pera"
@@ -20,7 +21,7 @@ import { connectWallet } from "@/lib/pera"
 type AccountType = "individual" | "business"
 
 interface SignupData {
-  accountType: AccountType
+  accountType: AccountType | ""
   // Individual fields
   firstName: string
   lastName: string
@@ -54,7 +55,7 @@ export default function SignUpPage() {
   const [walletConnected, setWalletConnected] = useState(false)
 
   const [formData, setFormData] = useState<SignupData>({
-    accountType: "individual",
+    accountType: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -117,23 +118,25 @@ export default function SignUpPage() {
     }
   }
 
-  const canProceedToStep2 = () => {
+  const hasAccountDetails = () => {
     if (formData.accountType === "individual") {
-      return formData.firstName && formData.lastName && formData.email && formData.password
-    } else {
-      return (
+      return Boolean(formData.firstName && formData.lastName && formData.email && formData.password)
+    }
+    if (formData.accountType === "business") {
+      return Boolean(
         formData.firstName &&
-        formData.lastName &&
-        formData.email &&
-        formData.password &&
-        formData.companyName &&
-        formData.businessType
+          formData.lastName &&
+          formData.email &&
+          formData.password &&
+          formData.companyName &&
+          formData.businessType,
       )
     }
+    return false
   }
 
-  const canProceedToStep3 = () => {
-    return formData.address && formData.postalCode && formData.city && formData.country
+  const hasAddressDetails = () => {
+    return Boolean(formData.address && formData.postalCode && formData.city && formData.country)
   }
 
   const canSubmit = () => {
@@ -150,17 +153,15 @@ export default function SignUpPage() {
       >
         <Card>
           <CardHeader className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
-              </div>
+            <div className="mb-4 flex items-center justify-center">
+              <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={44} height={44} priority />
             </div>
             <CardTitle className="text-2xl">Create your account</CardTitle>
             <CardDescription>Start accepting crypto subscriptions today</CardDescription>
 
             {/* Progress indicator */}
-            <div className="flex items-center justify-center mt-6 space-x-2">
-              {[1, 2, 3, 4].map((step) => (
+            <div className="mt-6 flex items-center justify-center space-x-2">
+              {[1, 2, 3, 4, 5].map((step) => (
                 <div key={step} className="flex items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -169,41 +170,92 @@ export default function SignUpPage() {
                   >
                     {currentStep > step ? <Check className="h-4 w-4" /> : step}
                   </div>
-                  {step < 4 && <div className={`w-8 h-0.5 ${currentStep > step ? "bg-blue-600" : "bg-muted"}`} />}
+                  {step < 5 && <div className={`w-8 h-0.5 ${currentStep > step ? "bg-blue-600" : "bg-muted"}`} />}
                 </div>
               ))}
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground mt-2">
-              <span>Account</span>
-              <span>Address</span>
-              <span>Wallet</span>
-              <span>Finish</span>
+            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+              {["Account type", "Details", "Address", "Wallet", "Finalize"].map((label) => (
+                <span key={label}>{label}</span>
+              ))}
             </div>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {currentStep === 1 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                <div className="space-y-4">
-                  <Label>Account Type</Label>
-                  <Tabs
-                    value={formData.accountType}
-                    onValueChange={(value: AccountType) => updateFormData("accountType", value)}
-                    className="w-full"
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="individual" className="flex items-center">
-                        <User className="h-4 w-4 mr-2" />
-                        Individual
-                      </TabsTrigger>
-                      <TabsTrigger value="business" className="flex items-center">
-                        <Building className="h-4 w-4 mr-2" />
-                        Business
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-muted-foreground">Choose your account type</Label>
+                  <p className="text-sm text-muted-foreground">
+                    We’ll tailor the onboarding steps depending on whether you act as an individual or a business.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {[
+                      {
+                        value: "individual" as AccountType,
+                        title: "Individual creator",
+                        description: "For solo builders, consultants, and indie products.",
+                        icon: User,
+                        bullets: ["Personal dashboard", "Instant settlement", "No paperwork"],
+                      },
+                      {
+                        value: "business" as AccountType,
+                        title: "Business / DAO",
+                        description: "For teams handling multiple operators or higher volume.",
+                        icon: Building,
+                        bullets: ["Team governance", "Advanced analytics", "Programmatic invoicing"],
+                      },
+                    ].map((option) => {
+                      const selected = formData.accountType === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateFormData("accountType", option.value)}
+                          className={cn(
+                            "group flex h-full flex-col rounded-2xl border px-6 py-6 text-left transition-all duration-200",
+                            selected
+                              ? "border-white/50 bg-white/10 shadow-[0_20px_50px_-30px_rgba(99,102,241,0.75)]"
+                              : "border-white/10 bg-white/2 hover:border-white/30 hover:bg-white/5",
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={cn(
+                                "inline-flex h-10 w-10 items-center justify-center rounded-full transition-all",
+                                selected ? "bg-white text-background" : "bg-white/10 text-white/80 group-hover:bg-white/20",
+                              )}
+                            >
+                              <option.icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="text-lg font-semibold text-white">{option.title}</p>
+                              <p className="text-xs text-white/60">{option.description}</p>
+                            </div>
+                          </div>
+                          <ul className="mt-4 space-y-1 text-xs text-white/60">
+                            {option.bullets.map((bullet) => (
+                              <li key={bullet} className="flex items-center gap-2">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                                {bullet}
+                              </li>
+                            ))}
+                          </ul>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
+                <Button className="w-full" onClick={() => setCurrentStep(2)} disabled={!formData.accountType}>
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </motion.div>
+            )}
+
+            {currentStep === 2 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name *</Label>
@@ -317,14 +369,19 @@ export default function SignUpPage() {
                   />
                 </div>
 
-                <Button className="w-full" onClick={() => setCurrentStep(2)} disabled={!canProceedToStep2()}>
-                  Continue to Address
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                <div className="flex space-x-2">
+                  <Button variant="outline" onClick={() => setCurrentStep(1)} className="flex-1">
+                    Back
+                  </Button>
+                  <Button className="flex-1" onClick={() => setCurrentStep(3)} disabled={!hasAccountDetails()}>
+                    Continue to Address
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
               </motion.div>
             )}
 
-            {currentStep === 2 && (
+            {currentStep === 3 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="address">Address *</Label>
@@ -336,7 +393,6 @@ export default function SignUpPage() {
                     required
                   />
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="postalCode">Postal Code *</Label>
@@ -374,12 +430,11 @@ export default function SignUpPage() {
                     </Select>
                   </div>
                 </div>
-
                 <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setCurrentStep(1)} className="flex-1">
+                  <Button variant="outline" onClick={() => setCurrentStep(2)} className="flex-1">
                     Back
                   </Button>
-                  <Button className="flex-1" onClick={() => setCurrentStep(3)} disabled={!canProceedToStep3()}>
+                  <Button className="flex-1" onClick={() => setCurrentStep(4)} disabled={!hasAddressDetails()}>
                     Continue to Wallet
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -387,47 +442,40 @@ export default function SignUpPage() {
               </motion.div>
             )}
 
-            {currentStep === 3 && (
+            {currentStep === 4 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                <div className="text-center space-y-4">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto">
+                <div className="space-y-4 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600">
                     <Wallet className="h-8 w-8 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">Connect Your Pera Wallet</h3>
+                    <h3 className="text-lg font-semibold">Connect your Pera wallet</h3>
                     <p className="text-sm text-muted-foreground">
-                      Connect your wallet to receive subscription payments directly
+                      We’ll deposit subscription revenue directly to this wallet.
                     </p>
                   </div>
                 </div>
-
                 {walletConnected ? (
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
+                  <div className="rounded-lg border border-green-300/40 bg-green-100/40 p-4 text-left dark:border-green-700/60 dark:bg-green-900/20">
+                    <div className="flex items-center gap-2">
                       <Check className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-800 dark:text-green-200">Wallet Connected</span>
+                      <span className="font-medium text-green-700 dark:text-green-300">Wallet connected</span>
                     </div>
-                    <p className="text-sm text-green-600 dark:text-green-300 mt-1 font-mono">
+                    <p className="mt-1 font-mono text-sm text-green-700 dark:text-green-300">
                       {formData.walletAddress}
                     </p>
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full bg-transparent"
-                    onClick={handleWalletConnect}
-                    disabled={isLoading}
-                  >
+                  <Button variant="outline" className="w-full bg-transparent" onClick={handleWalletConnect} disabled={isLoading}>
                     <Wallet className="mr-2 h-4 w-4" />
                     {isLoading ? "Connecting..." : "Connect Pera Wallet"}
                   </Button>
                 )}
-
                 <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setCurrentStep(2)} className="flex-1">
+                  <Button variant="outline" onClick={() => setCurrentStep(3)} className="flex-1">
                     Back
                   </Button>
-                  <Button className="flex-1" onClick={() => setCurrentStep(4)} disabled={!walletConnected}>
+                  <Button className="flex-1" onClick={() => setCurrentStep(5)} disabled={!walletConnected}>
                     Continue to Finish
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -435,7 +483,7 @@ export default function SignUpPage() {
               </motion.div>
             )}
 
-            {currentStep === 4 && (
+            {currentStep === 5 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-start space-x-2">
@@ -494,7 +542,7 @@ export default function SignUpPage() {
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setCurrentStep(3)} className="flex-1">
+                  <Button variant="outline" onClick={() => setCurrentStep(4)} className="flex-1">
                     Back
                   </Button>
                   <Button className="flex-1" onClick={handleSubmit} disabled={!canSubmit() || isLoading}>

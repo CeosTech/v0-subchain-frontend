@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Wallet, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -64,10 +65,8 @@ export default function SignInPage() {
       >
         <Card>
           <CardHeader className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
-              </div>
+            <div className="mb-4 flex items-center justify-center">
+              <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={40} height={40} priority />
             </div>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>Sign in to your SubChain account</CardDescription>
