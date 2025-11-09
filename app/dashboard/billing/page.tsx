@@ -184,7 +184,7 @@ export default function BillingPage() {
           <CardHeader>
             <CardTitle>Plan Benefits Active</CardTitle>
             <CardDescription>
-              You're enjoying the complete SubChain experience with our Growth plan at just 2.4% commission.
+              You&apos;re enjoying the complete SubChain experience with our Growth plan at just 2.4% commission.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -234,7 +234,7 @@ export default function BillingPage() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>This Month's Revenue Breakdown</CardTitle>
+            <CardTitle>This Month&apos;s Revenue Breakdown</CardTitle>
             <CardDescription>Commission fees breakdown for January 2024</CardDescription>
           </CardHeader>
           <CardContent>

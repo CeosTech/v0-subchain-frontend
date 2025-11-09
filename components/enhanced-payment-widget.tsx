@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   X,
   Wallet,
   Check,
-  ExternalLink,
   AlertCircle,
   Loader2,
   CreditCard,
@@ -14,6 +14,7 @@ import {
   Zap,
   User,
   Building,
+  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +26,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { apiClient } from "@/lib/django-api-client"
+import { connectWallet } from "@/lib/pera"
 
 interface PaymentWidgetProps {
   isOpen: boolean
@@ -39,6 +42,10 @@ interface PaymentWidgetProps {
   companyLogo?: string
   primaryColor?: string
   backgroundColor?: string
+  allowBusinessSelection?: boolean
+  showVatField?: boolean
+  collectBillingAddress?: boolean
+  collectPhone?: boolean
 }
 
 type PaymentStep =
@@ -126,6 +133,10 @@ export function EnhancedPaymentWidget({
   companyLogo,
   primaryColor = "#3b82f6",
   backgroundColor = "#ffffff",
+  allowBusinessSelection = true,
+  showVatField = true,
+  collectBillingAddress = true,
+  collectPhone = true,
 }: PaymentWidgetProps) {
   const [step, setStep] = useState<PaymentStep>("customer_info")
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null)
@@ -136,8 +147,23 @@ export function EnhancedPaymentWidget({
   const [transactionHash, setTransactionHash] = useState<string | null>(null)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [confirmationDetails, setConfirmationDetails] = useState<{
+    subscriptionId?: string
+    invoiceId?: string
+  }>({})
+  const [couponCode, setCouponCode] = useState("")
+  const normalizedCouponCode = couponCode.trim()
 
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearProgressTimer = () => {
+    if (progressTimer.current) {
+      clearInterval(progressTimer.current)
+      progressTimer.current = null
+    }
+  }
+
+  const defaultCustomerInfo: CustomerInfo = {
     customer_type: "individual",
     first_name: "",
     last_name: "",
@@ -157,27 +183,24 @@ export function EnhancedPaymentWidget({
     accept_terms: false,
     auto_convert: false,
     stable_currency: "USDC",
-  })
+  }
+
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>(defaultCustomerInfo)
 
   const networkFee = 0.001
   const totalAmount = amount + networkFee
 
   useEffect(() => {
-    if (step === "processing") {
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval)
-            setStep("success")
-            setTransactionHash(`TX${Math.random().toString(36).substr(2, 9).toUpperCase()}`)
-            return 100
-          }
-          return prev + Math.random() * 15 + 5
-        })
-      }, 500)
-      return () => clearInterval(interval)
+    if (!allowBusinessSelection && customerInfo.customer_type !== "individual") {
+      setCustomerInfo((prev) => ({ ...prev, customer_type: "individual", company_name: "" }))
     }
-  }, [step])
+  }, [allowBusinessSelection, customerInfo.customer_type])
+
+  useEffect(() => {
+    return () => {
+      clearProgressTimer()
+    }
+  }, [])
 
   const validateCustomerInfo = () => {
     if (!customerInfo.first_name || !customerInfo.last_name || !customerInfo.email) {
@@ -203,7 +226,7 @@ export function EnhancedPaymentWidget({
         return
       }
       setError(null)
-      setStep("billing_info")
+      setStep(collectBillingAddress ? "billing_info" : "select_wallet")
     } else if (step === "billing_info") {
       setStep("select_wallet")
     }
@@ -218,48 +241,161 @@ export function EnhancedPaymentWidget({
   }
 
   const handleConnect = async () => {
+    if (!selectedWallet) {
+      setError("Please choose a wallet to continue.")
+      return
+    }
+
     setIsConnecting(true)
     setError(null)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      if (Math.random() < 0.1) {
-        throw new Error("Failed to connect to wallet. Please try again.")
+      if (selectedWallet === "pera") {
+        const address = await connectWallet()
+        setWalletAddress(address)
       }
-
-      setWalletAddress(`ALGO${Math.random().toString(36).substr(2, 8).toUpperCase()}`)
-      setWalletBalance(Math.random() * 1000 + 100)
+      setWalletBalance(null)
       setStep("confirm")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed")
-      setStep("error")
+      const message =
+        err instanceof Error ? err.message : "Failed to connect wallet. Please try again."
+      setError(message)
     } finally {
       setIsConnecting(false)
     }
   }
 
+  const buildMetadata = () => {
+    const base: Record<string, unknown> = {
+      auto_convert: customerInfo.auto_convert,
+      stable_currency: customerInfo.auto_convert ? customerInfo.stable_currency : undefined,
+      billing_same_as_personal: collectBillingAddress ? customerInfo.billing_same_as_personal : undefined,
+      plan_name: planName,
+      plan_id: planId,
+      amount,
+      currency,
+      interval,
+    }
+
+    return Object.entries(base).reduce<Record<string, unknown>>((acc, [key, value]) => {
+      if (value === undefined || value === null) {
+        return acc
+      }
+      if (typeof value === "string" && value.trim() === "") {
+        return acc
+      }
+      acc[key] = value
+      return acc
+    }, {})
+  }
+
   const handleConfirm = async () => {
+    const normalizedWallet = walletAddress?.trim()
+    if (!normalizedWallet) {
+      setError("Wallet address is required to confirm the subscription.")
+      return
+    }
+
+    const resolvedCustomerType: "individual" | "business" = allowBusinessSelection
+      ? customerInfo.customer_type
+      : "individual"
+
+    const personalAddress = {
+      address: customerInfo.address,
+      city: customerInfo.city,
+      postalCode: customerInfo.postal_code,
+      country: customerInfo.country,
+    }
+
+    const billingDetails = collectBillingAddress
+      ? customerInfo.billing_same_as_personal
+        ? personalAddress
+        : {
+            address: customerInfo.billing_address,
+            city: customerInfo.billing_city,
+            postalCode: customerInfo.billing_postal_code,
+            country: customerInfo.billing_country,
+          }
+      : personalAddress
+
+    const subscriptionOptions = {
+      walletAddress: normalizedWallet,
+      couponCode: normalizedCouponCode ? normalizedCouponCode : undefined,
+      email: customerInfo.email,
+      firstName: customerInfo.first_name,
+      lastName: customerInfo.last_name,
+      phone: collectPhone && customerInfo.phone ? customerInfo.phone : undefined,
+      customerType: resolvedCustomerType,
+      companyName:
+        resolvedCustomerType === "business" && customerInfo.company_name ? customerInfo.company_name : undefined,
+      vatNumber:
+        showVatField && resolvedCustomerType === "business" && customerInfo.vat_number
+          ? customerInfo.vat_number
+          : undefined,
+      billingAddress: billingDetails.address || undefined,
+      billingCity: billingDetails.city || undefined,
+      billingPostalCode: billingDetails.postalCode || undefined,
+      billingCountry: billingDetails.country || undefined,
+      metadata: buildMetadata(),
+    }
+
     setIsProcessing(true)
     setError(null)
-    setProgress(0)
+    setProgress(18)
     setStep("processing")
 
-    setTimeout(() => {
-      if (Math.random() < 0.15) {
-        setError("Insufficient balance or transaction failed")
-        setStep("error")
-        setIsProcessing(false)
+    clearProgressTimer()
+    progressTimer.current = setInterval(() => {
+      setProgress((prev) => Math.min(prev + Math.random() * 12 + 5, 92))
+    }, 500)
+
+    try {
+      const response = await apiClient.subscribe(planId, subscriptionOptions)
+
+      if (!response.data || response.error) {
+        throw new Error(response.error || "Unable to create subscription. Please try again.")
       }
-    }, 3000)
+
+      if (response.data.payment_error) {
+        throw new Error(response.data.payment_error)
+      }
+
+      clearProgressTimer()
+      setProgress(100)
+      setTransactionHash(
+        response.data.payment_intent?.id ||
+          response.data.invoice?.id ||
+          response.data.subscription?.id ||
+          normalizedWallet,
+      )
+      setConfirmationDetails({
+        subscriptionId: response.data.subscription?.id,
+        invoiceId: response.data.invoice?.id,
+      })
+      setStep("success")
+    } catch (err) {
+      clearProgressTimer()
+      const message = err instanceof Error ? err.message : "Payment failed. Please try again."
+      setError(message)
+      setProgress(0)
+      setStep("error")
+      setConfirmationDetails({})
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleRetry = () => {
+    clearProgressTimer()
     setError(null)
+    setIsProcessing(false)
+    setProgress(0)
     setStep("confirm")
+    setConfirmationDetails({})
   }
 
   const handleClose = () => {
+    clearProgressTimer()
     setStep("customer_info")
     setSelectedWallet(null)
     setError(null)
@@ -267,27 +403,11 @@ export function EnhancedPaymentWidget({
     setTransactionHash(null)
     setWalletAddress(null)
     setWalletBalance(null)
-    setCustomerInfo({
-      customer_type: "individual",
-      first_name: "",
-      last_name: "",
-      company_name: "",
-      email: "",
-      phone: "",
-      address: "",
-      postal_code: "",
-      city: "",
-      country: "France",
-      vat_number: "",
-      billing_same_as_personal: true,
-      billing_address: "",
-      billing_postal_code: "",
-      billing_city: "",
-      billing_country: "France",
-      accept_terms: false,
-      auto_convert: false,
-      stable_currency: "USDC",
-    })
+    setIsProcessing(false)
+    setIsConnecting(false)
+    setCustomerInfo(defaultCustomerInfo)
+    setCouponCode("")
+    setConfirmationDetails({})
     onClose()
   }
 
@@ -336,9 +456,14 @@ export function EnhancedPaymentWidget({
               <CardHeader className="pb-4" style={{ borderBottomColor: primaryColor }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    {companyLogo && (
-                      <img src={companyLogo || "/placeholder.svg"} alt={companyName} className="h-8 w-8 rounded" />
-                    )}
+                    <Image
+                      src={companyLogo ?? "/assets/subchain-glyph.svg"}
+                      alt={companyName}
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 rounded object-cover"
+                      unoptimized
+                    />
                     <div>
                       <CardTitle className="text-lg" style={{ color: primaryColor }}>
                         {companyName}
@@ -380,8 +505,9 @@ export function EnhancedPaymentWidget({
 
                       <TabsContent value="personal" className="space-y-4">
                         <div className="grid gap-4">
-                          <div className="grid gap-2">
-                            <Label>Customer Type</Label>
+                        <div className="grid gap-2">
+                          <Label>Customer Type</Label>
+                          {allowBusinessSelection ? (
                             <Select
                               value={customerInfo.customer_type}
                               onValueChange={(value: "individual" | "business") =>
@@ -394,19 +520,24 @@ export function EnhancedPaymentWidget({
                               <SelectContent>
                                 <SelectItem value="individual">
                                   <div className="flex items-center">
-                                    <User className="h-4 w-4 mr-2" />
+                                    <User className="mr-2 h-4 w-4" />
                                     Individual
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="business">
                                   <div className="flex items-center">
-                                    <Building className="h-4 w-4 mr-2" />
+                                    <Building className="mr-2 h-4 w-4" />
                                     Business
                                   </div>
                                 </SelectItem>
                               </SelectContent>
                             </Select>
-                          </div>
+                          ) : (
+                            <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+                              Individual
+                            </div>
+                          )}
+                        </div>
 
                           <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
@@ -452,17 +583,19 @@ export function EnhancedPaymentWidget({
                             />
                           </div>
 
-                          <div className="grid gap-2">
-                            <Label htmlFor="phone">Phone Number</Label>
-                            <Input
-                              id="phone"
-                              value={customerInfo.phone}
-                              onChange={(e) => setCustomerInfo((prev) => ({ ...prev, phone: e.target.value }))}
-                              placeholder="+33123456789"
-                            />
-                          </div>
+                          {collectPhone && (
+                            <div className="grid gap-2">
+                              <Label htmlFor="phone">Phone Number (optional)</Label>
+                              <Input
+                                id="phone"
+                                value={customerInfo.phone}
+                                onChange={(e) => setCustomerInfo((prev) => ({ ...prev, phone: e.target.value }))}
+                                placeholder="+33123456789"
+                              />
+                            </div>
+                          )}
 
-                          {customerInfo.customer_type === "business" && (
+                          {showVatField && customerInfo.customer_type === "business" && (
                             <div className="grid gap-2">
                               <Label htmlFor="vat_number">VAT Number</Label>
                               <Input
@@ -488,10 +621,10 @@ export function EnhancedPaymentWidget({
                             />
                           </div>
 
-                          <div className="grid grid-cols-3 gap-4">
-                            <div className="grid gap-2">
-                              <Label htmlFor="postal_code">Postal Code *</Label>
-                              <Input
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="postal_code">Postal Code *</Label>
+                          <Input
                                 id="postal_code"
                                 value={customerInfo.postal_code}
                                 onChange={(e) => setCustomerInfo((prev) => ({ ...prev, postal_code: e.target.value }))}
@@ -524,10 +657,21 @@ export function EnhancedPaymentWidget({
                                   ))}
                                 </SelectContent>
                               </Select>
-                            </div>
-                          </div>
                         </div>
-                      </TabsContent>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="coupon_code">Promo code</Label>
+                        <Input
+                          id="coupon_code"
+                          value={couponCode}
+                          onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                          placeholder="SUMMER25"
+                        />
+                        <p className="text-xs text-muted-foreground">Optional. Applied during confirmation.</p>
+                      </div>
+                    </div>
+                  </TabsContent>
                     </Tabs>
 
                     <div className="border rounded-lg p-4">
@@ -563,7 +707,7 @@ export function EnhancedPaymentWidget({
                   </motion.div>
                 )}
 
-                {step === "billing_info" && (
+                {collectBillingAddress && step === "billing_info" && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -773,6 +917,19 @@ export function EnhancedPaymentWidget({
                         </>
                       )}
                     </Button>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="manual_wallet_address">Wallet Address (manual)</Label>
+                      <Input
+                        id="manual_wallet_address"
+                        value={walletAddress ?? ""}
+                        onChange={(event) => setWalletAddress(event.target.value)}
+                        placeholder="ALGO..."
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Paste the Algorand address if you cannot connect automatically.
+                      </p>
+                    </div>
                   </motion.div>
                 )}
 
@@ -789,22 +946,34 @@ export function EnhancedPaymentWidget({
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Connected Wallet</span>
                         <Badge variant="outline" className="text-xs font-mono">
-                          {walletAddress}
+                          {walletAddress && walletAddress.trim().length > 0 ? walletAddress : "Not provided"}
                         </Badge>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Balance</span>
-                        <span className="text-sm font-medium">
-                          {walletBalance?.toFixed(2)} {currency}
-                        </span>
-                      </div>
-                      {walletBalance && walletBalance < totalAmount && (
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription className="text-sm">
-                            Insufficient balance. You need {totalAmount.toFixed(3)} {currency}.
-                          </AlertDescription>
-                        </Alert>
+                      {normalizedCouponCode && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Promo code</span>
+                          <Badge variant="secondary" className="text-xs uppercase">
+                            {normalizedCouponCode}
+                          </Badge>
+                        </div>
+                      )}
+                      {transactionHash && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Reference</span>
+                          <span className="font-mono text-xs">{transactionHash}</span>
+                        </div>
+                      )}
+                      {confirmationDetails.subscriptionId && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Subscription</span>
+                          <span className="font-mono text-xs">{confirmationDetails.subscriptionId}</span>
+                        </div>
+                      )}
+                      {confirmationDetails.invoiceId && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Invoice</span>
+                          <span className="font-mono text-xs">{confirmationDetails.invoiceId}</span>
+                        </div>
                       )}
                     </div>
 
@@ -839,7 +1008,11 @@ export function EnhancedPaymentWidget({
                     <Button
                       className="w-full"
                       onClick={handleConfirm}
-                      disabled={isProcessing || (walletBalance !== null && walletBalance < totalAmount)}
+                      disabled={
+                        isProcessing ||
+                        !walletAddress?.trim() ||
+                        (walletBalance !== null && walletBalance < totalAmount)
+                      }
                       style={{ backgroundColor: primaryColor }}
                     >
                       <CreditCard className="w-4 h-4 mr-2" />
@@ -927,6 +1100,14 @@ export function EnhancedPaymentWidget({
                           {amount} {currency}
                         </span>
                       </div>
+                      {normalizedCouponCode && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Promo code</span>
+                          <Badge variant="secondary" className="text-xs uppercase">
+                            {normalizedCouponCode}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                     <Button className="w-full" onClick={handleClose}>
                       Continue to Dashboard

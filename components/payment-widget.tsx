@@ -114,7 +114,7 @@ export default function PaymentWidget({
 
         {/* Features */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">What's included:</h4>
+          <h4 className="text-sm font-medium">What&apos;s included:</h4>
           <ul className="space-y-1">
             {features.map((feature, index) => (
               <li key={index} className="flex items-center text-sm">

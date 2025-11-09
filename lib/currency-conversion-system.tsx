@@ -262,33 +262,37 @@ export function useCurrencyService() {
   const currencyService = CurrencyService.getInstance()
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null
+
     const initializeService = async () => {
       try {
         setLoading(true)
         await currencyService.updateAllRates()
         setRates(currencyService.getAllRates())
-        
+
         // Démarrer les mises à jour automatiques toutes les 5 minutes
         currencyService.startRealTimeUpdates(5)
-        
+
         // Mettre à jour l'état local toutes les minutes
-        const interval = setInterval(() => {
+        interval = setInterval(() => {
           setRates(currencyService.getAllRates())
         }, 60000)
-
-        return () => {
-          clearInterval(interval)
-          currencyService.stopRealTimeUpdates()
-        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to initialize currency service')
+        setError(err instanceof Error ? err.message : "Failed to initialize currency service")
       } finally {
         setLoading(false)
       }
     }
 
-    initializeService()
-  }, [])
+    void initializeService()
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+      currencyService.stopRealTimeUpdates()
+    }
+  }, [currencyService])
 
   const calculatePrice = useCallback((
     basePriceEUR: number,

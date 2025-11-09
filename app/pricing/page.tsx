@@ -324,7 +324,7 @@ export default function PricingPage() {
               <CardContent>
                 <p className="text-muted-foreground">
                   No hidden fees. You only pay 2.4% + 0.30 ALGO per successful transaction. Additional fees apply for
-                  USDC (+0.5%) and other ASAs (+0.3%). That's it.
+                  USDC (+0.5%) and other ASAs (+0.3%). That&apos;s it.
                 </p>
               </CardContent>
             </Card>
@@ -335,7 +335,7 @@ export default function PricingPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  No monthly fees. You only pay when you process transactions. If you don't make sales, you don't pay
+                  No monthly fees. You only pay when you process transactions. If you don&apos;t make sales, you don&apos;t pay
                   anything.
                 </p>
               </CardContent>
@@ -347,7 +347,7 @@ export default function PricingPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Failed payments don't incur any fees. You only pay our commission on successful transactions.
+                  Failed payments don&apos;t incur any fees. You only pay our commission on successful transactions.
                 </p>
               </CardContent>
             </Card>
@@ -370,7 +370,7 @@ export default function PricingPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  When you refund a payment, we refund our commission as well. You don't pay fees on refunded
+                  When you refund a payment, we refund our commission as well. You don&apos;t pay fees on refunded
                   transactions.
                 </p>
               </CardContent>

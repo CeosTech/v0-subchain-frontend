@@ -56,6 +56,18 @@ export default function SubscribersPage() {
     walletAddress: "",
     quantity: 1,
     couponId: "",
+    couponCode: "",
+    email: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    customerType: "individual" as "individual" | "business",
+    companyName: "",
+    vatNumber: "",
+    billingAddress: "",
+    billingCity: "",
+    billingPostalCode: "",
+    billingCountry: "",
   })
 
   const filteredSubscriptions = useMemo(() => {
@@ -99,6 +111,24 @@ export default function SubscribersPage() {
       const response = await apiClient.subscribe(subscriptionForm.planId, {
         walletAddress: subscriptionForm.walletAddress.trim(),
         couponId: subscriptionForm.couponId || undefined,
+        couponCode: subscriptionForm.couponCode.trim() || undefined,
+        email: subscriptionForm.email.trim() || undefined,
+        firstName: subscriptionForm.firstName.trim() || undefined,
+        lastName: subscriptionForm.lastName.trim() || undefined,
+        phone: subscriptionForm.phone.trim() || undefined,
+        customerType: subscriptionForm.customerType,
+        companyName:
+          subscriptionForm.customerType === "business"
+            ? subscriptionForm.companyName.trim() || undefined
+            : undefined,
+        vatNumber:
+          subscriptionForm.customerType === "business"
+            ? subscriptionForm.vatNumber.trim() || undefined
+            : undefined,
+        billingAddress: subscriptionForm.billingAddress.trim() || undefined,
+        billingCity: subscriptionForm.billingCity.trim() || undefined,
+        billingPostalCode: subscriptionForm.billingPostalCode.trim() || undefined,
+        billingCountry: subscriptionForm.billingCountry.trim() || undefined,
         quantity: subscriptionForm.quantity || undefined,
       })
 
@@ -116,6 +146,18 @@ export default function SubscribersPage() {
         walletAddress: "",
         quantity: 1,
         couponId: "",
+        couponCode: "",
+        email: "",
+        firstName: "",
+        lastName: "",
+        phone: "",
+        customerType: "individual",
+        companyName: "",
+        vatNumber: "",
+        billingAddress: "",
+        billingCity: "",
+        billingPostalCode: "",
+        billingCountry: "",
       })
       setCreateDialogOpen(false)
       await refetchSubscriptions()
@@ -388,6 +430,102 @@ export default function SubscribersPage() {
                   The backend validates the wallet address; make sure it matches an Algorand account.
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customerType">Customer type</Label>
+                <Select
+                  value={subscriptionForm.customerType}
+                  onValueChange={(value: "individual" | "business") =>
+                    setSubscriptionForm((prev) => ({ ...prev, customerType: value }))
+                  }
+                >
+                  <SelectTrigger id="customerType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First name</Label>
+                  <Input
+                    id="firstName"
+                    value={subscriptionForm.firstName}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, firstName: event.target.value }))
+                    }
+                    placeholder="Jane"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last name</Label>
+                  <Input
+                    id="lastName"
+                    value={subscriptionForm.lastName}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, lastName: event.target.value }))
+                    }
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={subscriptionForm.email}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, email: event.target.value }))
+                    }
+                    placeholder="customer@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={subscriptionForm.phone}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, phone: event.target.value }))
+                    }
+                    placeholder="+33123456789"
+                  />
+                </div>
+              </div>
+
+              {subscriptionForm.customerType === "business" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company name</Label>
+                    <Input
+                      id="companyName"
+                      value={subscriptionForm.companyName}
+                      onChange={(event) =>
+                        setSubscriptionForm((prev) => ({ ...prev, companyName: event.target.value }))
+                      }
+                      placeholder="My Company SAS"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vatNumber">VAT number</Label>
+                    <Input
+                      id="vatNumber"
+                      value={subscriptionForm.vatNumber}
+                      onChange={(event) =>
+                        setSubscriptionForm((prev) => ({ ...prev, vatNumber: event.target.value }))
+                      }
+                      placeholder="FR12345678901"
+                    />
+                  </div>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="billing" className="mt-4 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -425,6 +563,68 @@ export default function SubscribersPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="couponCode">Promo code</Label>
+                  <Input
+                    id="couponCode"
+                    value={subscriptionForm.couponCode}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, couponCode: event.target.value.toUpperCase() }))
+                    }
+                    placeholder="SAVE20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="billingCountry">Billing country</Label>
+                  <Input
+                    id="billingCountry"
+                    value={subscriptionForm.billingCountry}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, billingCountry: event.target.value }))
+                    }
+                    placeholder="France"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="billingAddress">Billing address</Label>
+                  <Input
+                    id="billingAddress"
+                    value={subscriptionForm.billingAddress}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, billingAddress: event.target.value }))
+                    }
+                    placeholder="123 Main Street"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="billingCity">Billing city</Label>
+                  <Input
+                    id="billingCity"
+                    value={subscriptionForm.billingCity}
+                    onChange={(event) =>
+                      setSubscriptionForm((prev) => ({ ...prev, billingCity: event.target.value }))
+                    }
+                    placeholder="Paris"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="billingPostalCode">Billing postal code</Label>
+                <Input
+                  id="billingPostalCode"
+                  value={subscriptionForm.billingPostalCode}
+                  onChange={(event) =>
+                    setSubscriptionForm((prev) => ({ ...prev, billingPostalCode: event.target.value }))
+                  }
+                  placeholder="75001"
+                />
               </div>
             </TabsContent>
           </Tabs>

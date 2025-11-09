@@ -245,6 +245,118 @@ export interface Integration {
   updated_at: string
 }
 
+export interface X402PricingRule {
+  id: string
+  pattern: string
+  methods: string[]
+  amount: string
+  currency: string
+  network: string
+  priority: number
+  description?: string | null
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface X402Receipt {
+  id: string
+  nonce: string
+  amount: string
+  currency: string
+  status: string
+  payer_address: string
+  request_path: string
+  request_method?: string | null
+  verified_at?: string | null
+  created_at?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface X402RevenueEvent {
+  id?: string
+  amount: string
+  fee_amount: string
+  merchant_amount: string
+  created_at: string
+  metadata?: Record<string, unknown>
+}
+
+export interface X402Link {
+  id: string
+  name: string
+  slug: string
+  amount: string
+  currency: string
+  network: string
+  pay_to_address: string
+  platform_fee_percent: string
+  success_url?: string | null
+  callback_url?: string | null
+  metadata?: Record<string, unknown> | null
+  events?: X402RevenueEvent[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface X402Widget {
+  id: string
+  name: string
+  slug: string
+  amount: string
+  currency: string
+  network: string
+  pay_to_address: string
+  platform_fee_percent: string
+  success_url?: string | null
+  callback_url?: string | null
+  metadata?: Record<string, unknown> | null
+  events?: X402RevenueEvent[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface X402CreditPlan {
+  id: string
+  name: string
+  slug: string
+  amount: string
+  currency: string
+  network: string
+  credits_per_payment: number
+  pay_to_address: string
+  platform_fee_percent: string
+  description?: string | null
+  metadata?: Record<string, unknown> | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface X402CreditSubscription {
+  id: string
+  plan: string | X402CreditPlan
+  consumer_ref: string
+  credits_remaining: number
+  total_credits: number
+  last_purchase_at?: string | null
+  created_at?: string
+  metadata?: Record<string, unknown> | null
+}
+
+export interface X402CreditUsageEntry {
+  id: string
+  usage_type: "top_up" | "consumption" | string
+  credits_delta: number
+  fee_amount: string
+  merchant_amount: string
+  created_at: string
+  description?: string | null
+  plan?: string | X402CreditPlan | null
+  subscription?: string | X402CreditSubscription | null
+  consumer_ref?: string | null
+  metadata?: Record<string, unknown> | null
+}
+
 type RequestOptions = RequestInit & {
   skipAuth?: boolean
 }
@@ -253,9 +365,11 @@ class DjangoAPIClient {
   private baseURL: string
   private accessToken: string | null = null
   private refreshToken: string | null = null
+  private fetchImpl: typeof fetch
 
   constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000") {
     this.baseURL = baseURL
+    this.fetchImpl = (...args) => fetch(...args)
 
     if (typeof window !== "undefined") {
       this.accessToken = localStorage.getItem("subchain_access_token")
@@ -309,34 +423,42 @@ class DjangoAPIClient {
   }
 
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<APIResponse<T>> {
-    const { skipAuth, ...fetchOptions } = options
+    const { skipAuth, headers: customHeaders, ...requestOptions } = options
     const url = this.buildURL(endpoint)
 
-    const headers: HeadersInit = {
-      Accept: "application/json",
-      ...(fetchOptions.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...fetchOptions.headers,
+    const headers = new Headers(customHeaders as HeadersInit | undefined)
+
+    if (!headers.has("Accept")) {
+      headers.set("Accept", "application/json")
     }
 
-    if (!skipAuth && this.accessToken) {
-      headers.Authorization = `Bearer ${this.accessToken}`
+    if (!(requestOptions.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json")
+    }
+
+    if (!skipAuth && this.accessToken && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${this.accessToken}`)
+    }
+
+    const requestInit: RequestInit = {
+      ...requestOptions,
+      headers,
     }
 
     try {
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers,
-      })
+      let response = await this.fetchImpl(url, requestInit)
 
       if (response.status === 401 && !skipAuth && this.refreshToken) {
         const refreshed = await this.refreshAccessToken()
         if (refreshed) {
-          headers.Authorization = `Bearer ${this.accessToken}`
-          const retry = await fetch(url, {
-            ...fetchOptions,
+          headers.set("Authorization", `Bearer ${this.accessToken}`)
+          const retryInit: RequestInit = {
+            ...requestOptions,
             headers,
-          })
-          return this.handleResponse<T>(retry)
+          }
+          response = await this.fetchImpl(url, retryInit)
+        } else {
+          return this.handleResponse<T>(response)
         }
       }
 
@@ -409,6 +531,10 @@ class DjangoAPIClient {
       localStorage.removeItem("subchain_access_token")
       localStorage.removeItem("subchain_refresh_token")
     }
+  }
+
+  setFetchImplementation(fetchImpl?: typeof fetch) {
+    this.fetchImpl = fetchImpl ?? ((...args) => fetch(...args))
   }
 
   async refreshAccessToken(): Promise<boolean> {
@@ -641,8 +767,24 @@ class DjangoAPIClient {
   async createSubscription(payload: {
     plan_id: string
     wallet_address: string
-    coupon_id?: string
     quantity?: number
+    coupon_id?: string
+    coupon_code?: string
+    email?: string
+    first_name?: string
+    last_name?: string
+    phone?: string
+    customer_type?: "individual" | "business"
+    company_name?: string
+    vat_number?: string
+    billing_address?: string
+    billing_city?: string
+    billing_postal_code?: string
+    billing_country?: string
+    shipping_address?: string
+    shipping_city?: string
+    shipping_postal_code?: string
+    shipping_country?: string
     metadata?: Record<string, unknown>
   }) {
     return this.request<SubscriptionCreateResponse>("/api/subscriptions/subscriptions/", {
@@ -711,6 +853,22 @@ class DjangoAPIClient {
     payload: {
       walletAddress: string
       couponId?: string
+      couponCode?: string
+      email?: string
+      firstName?: string
+      lastName?: string
+      phone?: string
+      customerType?: "individual" | "business"
+      companyName?: string
+      vatNumber?: string
+      billingAddress?: string
+      billingCity?: string
+      billingPostalCode?: string
+      billingCountry?: string
+      shippingAddress?: string
+      shippingCity?: string
+      shippingPostalCode?: string
+      shippingCountry?: string
       quantity?: number
       metadata?: Record<string, unknown>
     },
@@ -719,6 +877,22 @@ class DjangoAPIClient {
       plan_id: planId,
       wallet_address: payload.walletAddress,
       coupon_id: payload.couponId,
+      coupon_code: payload.couponCode,
+      email: payload.email,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      phone: payload.phone,
+      customer_type: payload.customerType,
+      company_name: payload.companyName,
+      vat_number: payload.vatNumber,
+      billing_address: payload.billingAddress,
+      billing_city: payload.billingCity,
+      billing_postal_code: payload.billingPostalCode,
+      billing_country: payload.billingCountry,
+      shipping_address: payload.shippingAddress,
+      shipping_city: payload.shippingCity,
+      shipping_postal_code: payload.shippingPostalCode,
+      shipping_country: payload.shippingCountry,
       quantity: payload.quantity,
       metadata: payload.metadata,
     })
@@ -745,6 +919,50 @@ class DjangoAPIClient {
     }
 
     return response as APIResponse<PaginatedResponse<Coupon>>
+  }
+
+  async createCoupon(payload: {
+    code: string
+    duration: "once" | "forever" | "repeating"
+    percent_off?: number
+    amount_off?: number
+    currency?: string
+    duration_in_months?: number
+    max_redemptions?: number
+    redeem_by?: string
+    metadata?: Record<string, unknown>
+  }) {
+    return this.request<Coupon>(`/api/subscriptions/coupons/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async updateCoupon(
+    couponId: string,
+    payload: Partial<{
+      code: string
+      duration: "once" | "forever" | "repeating"
+      percent_off: number | null
+      amount_off: number | null
+      currency: string | null
+      duration_in_months: number | null
+      max_redemptions: number | null
+      redeem_by: string | null
+      is_active: boolean
+      metadata: Record<string, unknown>
+    }>,
+  ) {
+    return this.request<Coupon>(`/api/subscriptions/coupons/${couponId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async deleteCoupon(couponId: string) {
+    return this.request(`/api/subscriptions/coupons/${couponId}/`, {
+      method: "DELETE",
+    })
   }
 
   async listInvoices(params?: Record<string, unknown>) {
@@ -1057,6 +1275,189 @@ class DjangoAPIClient {
     return this.request(`/api/integrations/${integrationId}/`, {
       method: "DELETE",
     })
+  }
+
+  // X402 Micropayments -------------------------------------------------------
+
+  async listX402PricingRules() {
+    return this.request<X402PricingRule[]>("/api/integrations/x402/pricing-rules/")
+  }
+
+  async createX402PricingRule(payload: {
+    pattern: string
+    methods: string[]
+    amount: string
+    currency: string
+    network: string
+    priority: number
+    description?: string | null
+    is_active?: boolean
+  }) {
+    return this.request<X402PricingRule>("/api/integrations/x402/pricing-rules/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async updateX402PricingRule(ruleId: string, payload: Partial<Omit<X402PricingRule, "id">>) {
+    return this.request<X402PricingRule>(`/api/integrations/x402/pricing-rules/${ruleId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async deleteX402PricingRule(ruleId: string) {
+    return this.request(`/api/integrations/x402/pricing-rules/${ruleId}/`, {
+      method: "DELETE",
+    })
+  }
+
+  async listX402Receipts(params?: Record<string, unknown>) {
+    const query = this.buildQuery(params)
+    const response = await this.request<PaginatedResponse<X402Receipt> | X402Receipt[]>(
+      `/api/integrations/x402/receipts/${query}`,
+    )
+
+    if (Array.isArray(response.data)) {
+      return {
+        ...response,
+        data: {
+          count: response.data.length,
+          next: null,
+          previous: null,
+          results: response.data,
+        },
+      } as APIResponse<PaginatedResponse<X402Receipt>>
+    }
+
+    return response as APIResponse<PaginatedResponse<X402Receipt>>
+  }
+
+  async listX402Links(params?: Record<string, unknown>) {
+    const query = this.buildQuery(params)
+    return this.request<X402Link[]>(`/api/integrations/x402/links/${query}`)
+  }
+
+  async createX402Link(payload: Partial<X402Link> & { name: string; slug: string }) {
+    return this.request<X402Link>("/api/integrations/x402/links/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async updateX402Link(linkId: string, payload: Partial<X402Link>) {
+    return this.request<X402Link>(`/api/integrations/x402/links/${linkId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async deleteX402Link(linkId: string) {
+    return this.request(`/api/integrations/x402/links/${linkId}/`, {
+      method: "DELETE",
+    })
+  }
+
+  async listX402Widgets(params?: Record<string, unknown>) {
+    const query = this.buildQuery(params)
+    return this.request<X402Widget[]>(`/api/integrations/x402/widgets/${query}`)
+  }
+
+  async createX402Widget(payload: Partial<X402Widget> & { name: string; slug: string }) {
+    return this.request<X402Widget>("/api/integrations/x402/widgets/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async updateX402Widget(widgetId: string, payload: Partial<X402Widget>) {
+    return this.request<X402Widget>(`/api/integrations/x402/widgets/${widgetId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async deleteX402Widget(widgetId: string) {
+    return this.request(`/api/integrations/x402/widgets/${widgetId}/`, {
+      method: "DELETE",
+    })
+  }
+
+  async listX402CreditPlans(params?: Record<string, unknown>) {
+    const query = this.buildQuery(params)
+    return this.request<X402CreditPlan[]>(`/api/integrations/x402/credit-plans/${query}`)
+  }
+
+  async createX402CreditPlan(payload: Partial<X402CreditPlan> & { name: string; slug: string }) {
+    return this.request<X402CreditPlan>("/api/integrations/x402/credit-plans/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async updateX402CreditPlan(planId: string, payload: Partial<X402CreditPlan>) {
+    return this.request<X402CreditPlan>(`/api/integrations/x402/credit-plans/${planId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async deleteX402CreditPlan(planId: string) {
+    return this.request(`/api/integrations/x402/credit-plans/${planId}/`, {
+      method: "DELETE",
+    })
+  }
+
+  async listX402CreditSubscriptions(params?: Record<string, unknown>) {
+    const query = this.buildQuery(params)
+    const response = await this.request<PaginatedResponse<X402CreditSubscription> | X402CreditSubscription[]>(
+      `/api/integrations/x402/credit-subscriptions/${query}`,
+    )
+
+    if (Array.isArray(response.data)) {
+      return {
+        ...response,
+        data: {
+          count: response.data.length,
+          next: null,
+          previous: null,
+          results: response.data,
+        },
+      } as APIResponse<PaginatedResponse<X402CreditSubscription>>
+    }
+
+    return response as APIResponse<PaginatedResponse<X402CreditSubscription>>
+  }
+
+  async consumeX402CreditSubscription(subscriptionId: string, payload: { credits: number; description?: string }) {
+    return this.request<X402CreditSubscription>(
+      `/api/integrations/x402/credit-subscriptions/${subscriptionId}/consume/`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    )
+  }
+
+  async listX402CreditUsage(params?: Record<string, unknown>) {
+    const query = this.buildQuery(params)
+    const response = await this.request<PaginatedResponse<X402CreditUsageEntry> | X402CreditUsageEntry[]>(
+      `/api/integrations/x402/credit-usage/${query}`,
+    )
+
+    if (Array.isArray(response.data)) {
+      return {
+        ...response,
+        data: {
+          count: response.data.length,
+          next: null,
+          previous: null,
+          results: response.data,
+        },
+      } as APIResponse<PaginatedResponse<X402CreditUsageEntry>>
+    }
+
+    return response as APIResponse<PaginatedResponse<X402CreditUsageEntry>>
   }
 
   // Utility --------------------------------------------------------------------

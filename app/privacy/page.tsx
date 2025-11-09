@@ -85,7 +85,7 @@ export default function PrivacyPage() {
 
               <h2>4. Blockchain Data</h2>
               <p>
-                Please note that transactions on the Algorand blockchain are public and immutable. While we don't
+                Please note that transactions on the Algorand blockchain are public and immutable. While we don&apos;t
                 publish your personal information on the blockchain, transaction amounts and wallet addresses are
                 publicly visible.
               </p>
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
               <h2>9. Changes to This Policy</h2>
               <p>
                 We may update this privacy policy from time to time. We will notify you of any material changes by
-                posting the new policy on this page and updating the "last updated" date.
+                posting the new policy on this page and updating the &quot;last updated&quot; date.
               </p>
 
               <h2>10. Contact Us</h2>

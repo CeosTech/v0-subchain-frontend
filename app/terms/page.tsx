@@ -38,10 +38,10 @@ export default function TermsPage() {
             </CardHeader>
             <CardContent className="prose prose-gray dark:prose-invert max-w-none">
               <h2>1. Acceptance of Terms</h2>
-              <p>
-                By accessing and using SubChain's services, you accept and agree to be bound by the terms and provision
-                of this agreement.
-              </p>
+            <p>
+              By accessing and using SubChain&apos;s services, you accept and agree to be bound by the terms and provision
+              of this agreement.
+            </p>
 
               <h2>2. Description of Service</h2>
               <p>
@@ -109,12 +109,12 @@ export default function TermsPage() {
               </p>
 
               <h2>8. Indemnification</h2>
-              <p>
-                You agree to defend, indemnify, and hold harmless SubChain and its licensee and licensors, and their
-                employees, contractors, agents, officers and directors, from and against any and all claims, damages,
-                obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney's
-                fees).
-              </p>
+            <p>
+              You agree to defend, indemnify, and hold harmless SubChain and its licensee and licensors, and their
+              employees, contractors, agents, officers and directors, from and against any and all claims, damages,
+              obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney&apos;s
+              fees).
+            </p>
 
               <h2>9. Termination</h2>
               <p>

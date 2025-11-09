@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { Webhook, ExternalLink, Copy, Check, Shield } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { EnhancedPaymentWidget } from "@/components/enhanced-payment-widget"
+import { useSubscriptionPlans } from "@/hooks/use-django-api"
 
 const integrations = [
   {
@@ -43,9 +46,46 @@ export default function IntegrationsPage() {
   const [copiedCode, setCopiedCode] = useState("")
   const [webhookUrl, setWebhookUrl] = useState("https://your-app.com/webhooks/subchain")
   const [showLinkForm, setShowLinkForm] = useState(false)
-  const [showWidgetForm, setShowWidgetForm] = useState(false)
   const [linkPreview, setLinkPreview] = useState("")
-  const [widgetCode, setWidgetCode] = useState("")
+  const [widgetPreviewOpen, setWidgetPreviewOpen] = useState(false)
+  const [selectedPlanId, setSelectedPlanId] = useState("")
+  const [widgetConfig, setWidgetConfig] = useState({
+    companyName: "SubChain",
+    primaryColor: "#6366f1",
+    backgroundColor: "#0b1120",
+    allowBusinessSelection: true,
+    collectBillingAddress: true,
+    collectPhone: true,
+    showVatField: true,
+  })
+  const { plans } = useSubscriptionPlans()
+
+  const selectedPlan = useMemo(
+    () => plans.find((plan) => plan.id === selectedPlanId) ?? plans[0],
+    [plans, selectedPlanId],
+  )
+
+  useEffect(() => {
+    if (!selectedPlanId && plans.length > 0) {
+      setSelectedPlanId(plans[0].id)
+    }
+  }, [plans, selectedPlanId])
+
+  const selectedTier = selectedPlan?.price_tiers?.[0]
+  const widgetSnippet = useMemo(() => {
+    if (!selectedPlan) return "<!-- Configure a plan to generate the embed code -->"
+    const dataAttributes = [
+      `data-plan-id="${selectedPlan.id}"`,
+      `data-company-name="${widgetConfig.companyName}"`,
+      `data-primary-color="${widgetConfig.primaryColor}"`,
+      `data-background-color="${widgetConfig.backgroundColor}"`,
+      `data-allow-business="${widgetConfig.allowBusinessSelection}"`,
+      `data-collect-billing="${widgetConfig.collectBillingAddress}"`,
+      `data-collect-phone="${widgetConfig.collectPhone}"`,
+      `data-show-vat="${widgetConfig.showVatField}"`,
+    ]
+    return `<div id="subchain-payment-widget"\n  ${dataAttributes.join("\n  ")}\n></div>\n<script src="https://cdn.subchain.xyz/widget.js" async></script>`
+  }, [selectedPlan, widgetConfig])
 
   const copyCode = (code: string, type: string) => {
     navigator.clipboard.writeText(code)
@@ -86,13 +126,6 @@ app.post('/webhooks/subchain', express.raw({type: 'application/json'}), (req, re
     const newLink = "https://example.com/payment-link"
     setLinkPreview(newLink)
     setShowLinkForm(false)
-  }
-
-  const handleGenerateWidgetCode = () => {
-    // Logic to generate widget code
-    const newCode = `<script src="https://example.com/widget.js"></script>`
-    setWidgetCode(newCode)
-    setShowWidgetForm(false)
   }
 
   return (
@@ -165,34 +198,159 @@ app.post('/webhooks/subchain', express.raw({type: 'application/json'}), (req, re
                       <CardTitle className="text-lg flex items-center">💳 Payment Widget</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {showWidgetForm ? (
-                        <div className="space-y-4">
-                          <Label htmlFor="widget-name">Widget Name</Label>
-                          <Input id="widget-name" placeholder="Enter widget name" />
-                          <Label htmlFor="widget-description">Description</Label>
-                          <Input id="widget-description" placeholder="Enter description" />
-                          <Button className="w-full" onClick={handleGenerateWidgetCode}>
-                            Generate Widget Code
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Embed a customizable payment widget directly on your website
+                      <div className="space-y-6">
+                        <p className="text-sm text-muted-foreground">
+                          Configure the hosted checkout experience and preview the enhanced payment widget with your
+                          own branding before embedding it.
+                        </p>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="widget-plan">Plan to feature</Label>
+                          <Select
+                            value={selectedPlan?.id ?? ""}
+                            onValueChange={(value) => setSelectedPlanId(value)}
+                            disabled={plans.length === 0}
+                          >
+                            <SelectTrigger id="widget-plan">
+                              <SelectValue placeholder={plans.length === 0 ? "No plan available" : undefined} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {plans.map((plan) => (
+                                <SelectItem key={plan.id} value={plan.id}>
+                                  {plan.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            The widget displays pricing from the selected plan&apos;s primary tier.
                           </p>
-                          <Button className="w-full" onClick={() => setShowWidgetForm(true)}>
-                            Generate Widget Code
-                          </Button>
-                          {widgetCode && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium">Preview:</p>
-                              <pre className="bg-slate-900 text-slate-300 p-4 rounded-lg overflow-x-auto text-sm">
-                                <code>{widgetCode}</code>
-                              </pre>
-                            </div>
-                          )}
                         </div>
-                      )}
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <Label className="text-sm">Allow business selection</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Let customers choose between individual and business accounts.
+                                </p>
+                              </div>
+                              <Switch
+                                checked={widgetConfig.allowBusinessSelection}
+                                onCheckedChange={(value) =>
+                                  setWidgetConfig((prev) => ({ ...prev, allowBusinessSelection: Boolean(value) }))
+                                }
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <Label className="text-sm">Collect billing address</Label>
+                                <p className="text-xs text-muted-foreground">Adds a dedicated billing step.</p>
+                              </div>
+                              <Switch
+                                checked={widgetConfig.collectBillingAddress}
+                                onCheckedChange={(value) =>
+                                  setWidgetConfig((prev) => ({ ...prev, collectBillingAddress: Boolean(value) }))
+                                }
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <Label className="text-sm">Show VAT field</Label>
+                                <p className="text-xs text-muted-foreground">Surface VAT collection for businesses.</p>
+                              </div>
+                              <Switch
+                                checked={widgetConfig.showVatField}
+                                onCheckedChange={(value) =>
+                                  setWidgetConfig((prev) => ({ ...prev, showVatField: Boolean(value) }))
+                                }
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <Label className="text-sm">Collect phone number</Label>
+                                <p className="text-xs text-muted-foreground">Adds an optional contact field.</p>
+                              </div>
+                              <Switch
+                                checked={widgetConfig.collectPhone}
+                                onCheckedChange={(value) =>
+                                  setWidgetConfig((prev) => ({ ...prev, collectPhone: Boolean(value) }))
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="widget-company">Company name</Label>
+                              <Input
+                                id="widget-company"
+                                value={widgetConfig.companyName}
+                                onChange={(event) =>
+                                  setWidgetConfig((prev) => ({ ...prev, companyName: event.target.value }))
+                                }
+                                placeholder="Acme Inc."
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="widget-primary-color">Primary color</Label>
+                              <Input
+                                id="widget-primary-color"
+                                type="color"
+                                value={widgetConfig.primaryColor}
+                                onChange={(event) =>
+                                  setWidgetConfig((prev) => ({ ...prev, primaryColor: event.target.value }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="widget-background-color">Background color</Label>
+                              <Input
+                                id="widget-background-color"
+                                type="color"
+                                value={widgetConfig.backgroundColor}
+                                onChange={(event) =>
+                                  setWidgetConfig((prev) => ({ ...prev, backgroundColor: event.target.value }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Embed snippet</Label>
+                          <div className="relative">
+                            <pre className="bg-slate-900 text-slate-300 p-4 rounded-lg overflow-x-auto text-xs md:text-sm">
+                              <code>{widgetSnippet}</code>
+                            </pre>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="absolute top-3 right-3"
+                              onClick={() => copyCode(widgetSnippet, "widget-snippet")}
+                            >
+                              {copiedCode === "widget-snippet" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Button
+                            className="flex-1"
+                            onClick={() => setWidgetPreviewOpen(true)}
+                            disabled={!selectedPlan}
+                          >
+                            Preview payment widget
+                          </Button>
+                          <Button
+                            className="flex-1"
+                            variant="outline"
+                            onClick={() => copyCode(widgetSnippet, "widget-snippet")}
+                          >
+                            Copy embed code
+                          </Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -373,6 +531,22 @@ app.post('/webhooks/subchain', express.raw({type: 'application/json'}), (req, re
           </motion.div>
         </TabsContent>
       </Tabs>
+
+      <EnhancedPaymentWidget
+        isOpen={widgetPreviewOpen}
+        onClose={() => setWidgetPreviewOpen(false)}
+        planId={selectedPlan?.id}
+        planName={selectedPlan?.name}
+        amount={selectedTier ? Number(selectedTier.unit_amount) : undefined}
+        currency={selectedTier?.currency === "USDC" ? "USDC" : "ALGO"}
+        companyName={widgetConfig.companyName}
+        primaryColor={widgetConfig.primaryColor}
+        backgroundColor={widgetConfig.backgroundColor}
+        allowBusinessSelection={widgetConfig.allowBusinessSelection}
+        collectBillingAddress={widgetConfig.collectBillingAddress}
+        collectPhone={widgetConfig.collectPhone}
+        showVatField={widgetConfig.showVatField}
+      />
     </div>
   )
 }

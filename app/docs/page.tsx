@@ -214,7 +214,7 @@ export default function DocsPage() {
                         <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                           <li>Go to your SubChain dashboard</li>
                           <li>Navigate to Integrations → Payment Links</li>
-                          <li>Click "Create Payment Link"</li>
+                          <li>Click &quot;Create Payment Link&quot;</li>
                           <li>Configure your plan, pricing, and branding</li>
                           <li>Copy and share your link</li>
                         </ol>
@@ -412,7 +412,7 @@ export default function DocsPage() {
                       <div>
                         <h4 className="font-semibold mb-2">Blockchain Security</h4>
                         <ul className="space-y-1 text-sm text-muted-foreground">
-                          <li>• Algorand's secure consensus</li>
+                          <li>• Algorand&apos;s secure consensus</li>
                           <li>• Instant transaction finality</li>
                           <li>• Smart contract audits</li>
                           <li>• Multi-signature wallets</li>
