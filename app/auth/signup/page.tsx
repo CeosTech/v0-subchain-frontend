@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { Eye, EyeOff, User, Building, Wallet, ArrowRight, Check } from "lucide-react"
+import { Eye, EyeOff, User, Building, Wallet, ArrowRight, Check, MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -53,6 +53,9 @@ export default function SignUpPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [walletConnected, setWalletConnected] = useState(false)
+  const [signupDetail, setSignupDetail] = useState<string | null>(null)
+  const [resendStatus, setResendStatus] = useState<{ message: string; error?: boolean } | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
 
   const [formData, setFormData] = useState<SignupData>({
     accountType: "",
@@ -81,7 +84,7 @@ export default function SignUpPage() {
   const handleWalletConnect = async () => {
     setIsLoading(true)
     try {
-      const address = await connectWallet()
+      const address = await connectWallet({ forceNewConnection: true })
       setWalletConnected(true)
       updateFormData("walletAddress", address)
     } catch (e) {
@@ -94,6 +97,7 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setResendStatus(null)
     if (!formData.walletAddress) {
       setIsLoading(false)
       return
@@ -111,10 +115,34 @@ export default function SignUpPage() {
         setIsLoading(false)
         return
       }
-      window.location.href = "/dashboard"
+      setSignupDetail(resp.data.detail || "Compte créé. Vérifiez votre boîte mail avant de vous connecter.")
+      setIsLoading(false)
     } catch (e) {
       console.log("register error", e)
       setIsLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    if (!formData.email) return
+    setResendLoading(true)
+    setResendStatus(null)
+    try {
+      const resp = await apiClient.resendVerificationEmail(formData.email)
+      if (resp.error) {
+        setResendStatus({ message: resp.error, error: true })
+      } else {
+        setResendStatus({
+          message: resp.data?.detail || "Verification email resent. Please check your inbox.",
+        })
+      }
+    } catch (error) {
+      setResendStatus({
+        message: error instanceof Error ? error.message : "Unable to resend verification email.",
+        error: true,
+      })
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -141,6 +169,63 @@ export default function SignUpPage() {
 
   const canSubmit = () => {
     return walletConnected && formData.acceptTerms && formData.acceptPrivacy
+  }
+
+  if (signupDetail) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-2xl"
+        >
+          <Card>
+            <CardHeader className="text-center space-y-4">
+              <div className="mb-2 flex items-center justify-center">
+                <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={44} height={44} priority />
+              </div>
+              <CardTitle className="text-2xl">Check your inbox</CardTitle>
+              <CardDescription>
+                {`We've sent a verification link. Confirm your email to activate your SubChain console.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white">
+                <MailCheck className="h-8 w-8" />
+              </div>
+              <div className="space-y-2 text-white/80">
+                <p className="text-base">{signupDetail}</p>
+                <p className="text-sm text-white/60">
+                  Nous avons envoyé un email à <span className="font-semibold text-white">{formData.email}</span>. Une
+                  fois validé, revenez vous connecter depuis la page de login.
+                </p>
+              </div>
+              {resendStatus && (
+                <div
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm",
+                    resendStatus.error ? "border-red-500/60 text-red-200" : "border-emerald-500/60 text-emerald-100",
+                  )}
+                >
+                  {resendStatus.message}
+                </div>
+              )}
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Button className="w-full sm:w-auto" onClick={handleResendVerification} disabled={resendLoading}>
+                  {resendLoading ? "Sending..." : "Resend verification email"}
+                </Button>
+                <Link href="/auth/signin" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full">
+                    Back to login
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    )
   }
 
   return (

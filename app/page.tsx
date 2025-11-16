@@ -93,6 +93,75 @@ const heroMetrics = [
   { label: "Cross-border ready", value: "54 countries" },
 ]
 
+const x402Benefits = [
+  {
+    icon: Zap,
+    title: {
+      fr: "Paywalls auto-résolutifs",
+      en: "Self-resolving paywalls",
+    },
+    description: {
+      fr: "Les réponses HTTP 402 transportent automatiquement le montant, la devise et l'adresse Algorand à créditer. Vos clients voient le contexte, signent, et la requête est rejouée sans friction.",
+      en: "HTTP 402 responses carry the price, currency, and Algorand address to credit. Users see the context, approve the payment, and the request retries instantly.",
+    },
+  },
+  {
+    icon: Shield,
+    title: {
+      fr: "Reçus signés & traçables",
+      en: "Signed, traceable receipts",
+    },
+    description: {
+      fr: "Chaque paiement génère un reçu x402 vérifiable qui alimente vos exports financiers et déclenche les webhooks SubChain pour livrer la ressource protégée.",
+      en: "Each payment issues a verifiable x402 receipt, feeding finance exports and triggering SubChain webhooks to ship the protected asset.",
+    },
+  },
+  {
+    icon: Globe,
+    title: {
+      fr: "Routes multi-produits",
+      en: "Multi-product routing",
+    },
+    description: {
+      fr: "Links, widgets ou plans de crédits pointent tous vers le même protocole. Paramétrez les splits de revenus, les callbacks et les métadonnées sans redéployer votre backend.",
+      en: "Links, widgets, or credit packs all converge on one protocol—configure revenue splits, callbacks, and metadata without redeploying.",
+    },
+  },
+]
+
+const x402UseCases = [
+  {
+    title: {
+      fr: "APIs facturées à la requête",
+      en: "Pay-per-request APIs",
+    },
+    description: {
+      fr: "Exposez vos endpoints publiquement, laissez x402 déclencher la fenêtre de paiement quand une limite est atteinte, puis rejouez l'appel avec le reçu dans l'en-tête.",
+      en: "Keep your endpoints public; x402 prompts for payment when limits are hit and replays the call with the receipt header attached.",
+    },
+  },
+  {
+    title: {
+      fr: "Widgets premium embarqués",
+      en: "Embedded premium widgets",
+    },
+    description: {
+      fr: "Ajoutez un paywall x402 à vos dashboards, rapports ou intégrations partenaires sans forcer la création de compte. Chaque widget suit son propre slug et analytics.",
+      en: "Wrap dashboards, reports, or partner embeds with an x402 paywall—no forced signup, each widget keeps its own slug and analytics.",
+    },
+  },
+  {
+    title: {
+      fr: "Crédits de consommation modulaires",
+      en: "Modular usage credits",
+    },
+    description: {
+      fr: "Offrez des paquets de crédits rechargeables (IA, data, infrastructure) et laissez les clients consommer via `/credits/{plan}` avec suivi des soldes en temps réel.",
+      en: "Sell rechargeable credit packs (AI, data, infrastructure) and let clients consume via `/credits/{plan}`, with real-time balance tracking.",
+    },
+  },
+]
+
 export default function HomePage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(124,58,237,0.18),transparent_55%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.18),transparent_65%),hsl(var(--background))]">
@@ -183,6 +252,91 @@ export default function HomePage() {
               </div>
             ))}
           </motion.div>
+        </section>
+
+        <section className="relative py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <Badge className="mx-auto mb-6 border-white/20 bg-white/10 text-white/80">
+                Protocole x402 • x402 protocol
+              </Badge>
+              <h2 className="text-4xl font-semibold text-white md:text-5xl">
+                Le micropaiement standardisé
+                <span className="mt-1 block text-xl font-normal text-white/60">Standardized micropayment rails</span>
+              </h2>
+              <div className="mx-auto mt-4 max-w-3xl text-lg text-white/60">
+                <p>
+                  Nous avons industrialisé la réponse HTTP 402 pour Algorand : un seul flux couvre les paywalls API, les
+                  liens de paiement et les plans de crédits, tout en respectant vos règles de facturation.
+                </p>
+                <p className="mt-3 text-base text-white/55">
+                  We industrialized HTTP 402 on Algorand: one flow secures API paywalls, payment links, and credit packs
+                  while honoring your pricing rules.
+                </p>
+              </div>
+            </motion.div>
+
+            <div className="mt-14 grid gap-10 lg:grid-cols-2">
+              <div className="space-y-5">
+                {x402Benefits.map((item) => (
+                  <div
+                    key={item.title.fr}
+                    className="glass-panel flex gap-4 rounded-3xl border border-white/10 px-6 py-5"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                      <item.icon className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        {item.title.fr}
+                        <span className="mt-1 block text-sm font-normal text-white/60">{item.title.en}</span>
+                      </h3>
+                      <p className="mt-2 text-sm text-white/65">
+                        {item.description.fr}
+                        <span className="mt-2 block text-white/55">{item.description.en}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-5">
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/60">
+                  Use cases • Cas d&apos;usage
+                </div>
+                {x402UseCases.map((useCase, index) => (
+                  <motion.div
+                    key={useCase.title.fr}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                  >
+                    <Card className="glass-panel border border-white/10 text-left">
+                      <CardHeader>
+                        <CardTitle className="text-white">
+                          {useCase.title.fr}
+                          <span className="mt-1 block text-sm font-normal text-white/60">{useCase.title.en}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm leading-relaxed text-white/65">
+                          {useCase.description.fr}
+                          <span className="mt-2 block text-white/55">{useCase.description.en}</span>
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="relative py-24">

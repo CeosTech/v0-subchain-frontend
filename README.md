@@ -38,6 +38,10 @@ Continue building your app on:
 - Hooks in `hooks/use-django-api.ts` consume the new client and expose helpers for auth, subscriptions (including checkout + invoice flows), payments/transactions, notifications and analytics based on the backend contract.
 - Plan authoring in the dashboard uses `POST/PATCH/DELETE /api/subscriptions/plans/`; authenticate with an admin/staff account. A smoke test is provided: `ADMIN_ACCESS_TOKEN=... BACKEND_URL=http://localhost:8000 pnpm test:plans`.
 
+### Environment variables
+
+- Copy `.env.example` to `.env.local` and follow `docs/environment.md` for the exact procedure to retrieve each value (Render backend URL, JWT/webhook secrets, optional test tokens).
+
 ## x402 Micropayments
 
 - New dashboard section: visit `/dashboard/micropayments` (linked in the sidebar) to manage every x402 product. Tabs include:

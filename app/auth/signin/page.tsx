@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { Eye, EyeOff, Wallet, ArrowRight } from "lucide-react"
+import { Eye, EyeOff, Wallet, ArrowRight, MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
 import { connectWallet } from "@/lib/pera"
+import { cn } from "@/lib/utils"
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -21,19 +22,32 @@ export default function SignInPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verificationPrompt, setVerificationPrompt] = useState<string | null>(null)
+  const [resendNotice, setResendNotice] = useState<{ message: string; error?: boolean } | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setVerificationPrompt(null)
+    setResendNotice(null)
     try {
       const resp = await apiClient.login(email, password)
       if (resp.error || !resp.data) {
         console.log("login failed", resp.error)
+        if (resp.status === 403 && resp.error?.toLowerCase().includes("not verified")) {
+          setVerificationPrompt(resp.error)
+          setPendingEmail(email)
+          setIsLoading(false)
+          return
+        }
         setError(resp.error || "Invalid credentials")
         setIsLoading(false)
         return
       }
+      setVerificationPrompt(null)
       window.location.href = "/dashboard"
     } catch (e) {
       console.log("login error", e)
@@ -45,7 +59,7 @@ export default function SignInPage() {
   const handleWalletConnect = async () => {
     setIsLoading(true)
     try {
-      const address = await connectWallet()
+      const address = await connectWallet({ forceNewConnection: true })
       console.log("wallet connected", address)
       window.location.href = "/dashboard"
     } catch (e) {
@@ -53,6 +67,87 @@ export default function SignInPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleResendVerification = async () => {
+    const targetEmail = pendingEmail || email
+    if (!targetEmail) return
+    setResendLoading(true)
+    setResendNotice(null)
+    try {
+      const resp = await apiClient.resendVerificationEmail(targetEmail)
+      if (resp.error) {
+        setResendNotice({ message: resp.error, error: true })
+      } else {
+        setResendNotice({
+          message: resp.data?.detail || "Verification email resent. Please check your inbox.",
+        })
+      }
+    } catch (error) {
+      setResendNotice({
+        message: error instanceof Error ? error.message : "Unable to resend verification email.",
+        error: true,
+      })
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  if (verificationPrompt) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Card>
+            <CardHeader className="text-center space-y-4">
+              <div className="mb-2 flex items-center justify-center">
+                <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={40} height={40} priority />
+              </div>
+              <CardTitle className="text-2xl">Verify your email to continue</CardTitle>
+              <CardDescription>{verificationPrompt}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white">
+                <MailCheck className="h-8 w-8" />
+              </div>
+              <p className="text-sm text-white/65">
+                Nous avons besoin d&apos;une adresse confirmée pour activer votre compte {pendingEmail || email}. Vérifiez
+                vos emails puis revenez vous connecter. Vous pouvez aussi renvoyer un email de confirmation.
+              </p>
+              {resendNotice && (
+                <div
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm",
+                    resendNotice.error ? "border-red-500/60 text-red-200" : "border-emerald-500/60 text-emerald-100",
+                  )}
+                >
+                  {resendNotice.message}
+                </div>
+              )}
+              <div className="flex flex-col gap-3">
+                <Button onClick={handleResendVerification} disabled={resendLoading}>
+                  {resendLoading ? "Sending..." : "Resend verification email"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setVerificationPrompt(null)
+                    setResendNotice(null)
+                  }}
+                >
+                  Back to login form
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    )
   }
 
   return (

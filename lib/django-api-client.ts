@@ -19,6 +19,11 @@ export interface AuthUser {
   is_verified: boolean
 }
 
+export interface RegistrationResponse {
+  detail: string
+  user: AuthUser
+}
+
 export interface UserProfile extends AuthUser {
   first_name?: string | null
   last_name?: string | null
@@ -599,21 +604,19 @@ class DjangoAPIClient {
       payload.username = username
     }
 
-    const response = await this.request<{
-      access: string
-      refresh: string
-      user: AuthUser
-    }>("/api/auth/register/", {
+    return this.request<RegistrationResponse>("/api/auth/register/", {
       method: "POST",
       body: JSON.stringify(payload),
       skipAuth: true,
     })
+  }
 
-    if (response.data?.access && response.data?.refresh) {
-      this.persistTokens(response.data.access, response.data.refresh)
-    }
-
-    return response
+  async resendVerificationEmail(email: string) {
+    return this.request<{ detail: string }>("/api/auth/resend-verification/", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+      skipAuth: true,
+    })
   }
 
   async logout({ redirect = true }: { redirect?: boolean } = {}) {
