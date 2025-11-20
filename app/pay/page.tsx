@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Wallet, ArrowRight, Loader2, Check } from "lucide-react"
@@ -16,7 +16,7 @@ interface SubscriptionStatus {
   message: string
 }
 
-export default function PayPage() {
+function PayPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const planCodeParam = searchParams.get("plan")
@@ -377,5 +377,22 @@ export default function PayPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function PayPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Chargement de la page…
+          </div>
+        </div>
+      }
+    >
+      <PayPageContent />
+    </Suspense>
   )
 }
