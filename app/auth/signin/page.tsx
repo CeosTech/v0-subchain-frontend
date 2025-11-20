@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
-import { connectWallet, disconnectWallet, resumeWalletSession } from "@/lib/pera"
+import { connectWallet, disconnectWallet, pera } from "@/lib/pera"
 import { cn } from "@/lib/utils"
 
 export default function SignInPage() {
@@ -31,13 +31,16 @@ export default function SignInPage() {
 
   useEffect(() => {
     let active = true
-    resumeWalletSession()
-      .then((address) => {
-        if (active && address) {
-          setWalletAddress(address)
-        }
+    if (!pera) return
+    pera
+      .reconnectSession()
+      .then((accounts) => {
+        if (!active || !accounts?.length) return
+        setWalletAddress(accounts[0])
       })
-      .catch(() => {})
+      .catch((error) => {
+        console.error("pera reconnect error", error)
+      })
     return () => {
       active = false
     }
@@ -75,6 +78,12 @@ export default function SignInPage() {
   const handleWalletConnect = async () => {
     setIsLoading(true)
     try {
+      if (pera?.session?.accounts?.length) {
+        const address = pera.session.accounts[0]
+        setWalletAddress(address)
+        window.location.href = "/dashboard"
+        return
+      }
       const address = await connectWallet()
       setWalletAddress(address)
       console.log("wallet connected", address)

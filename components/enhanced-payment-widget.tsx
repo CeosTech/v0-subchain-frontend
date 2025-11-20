@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/django-api-client"
-import { connectWallet, disconnectWallet, resumeWalletSession } from "@/lib/pera"
+import { connectWallet, disconnectWallet, pera } from "@/lib/pera"
 
 interface PaymentWidgetProps {
   isOpen: boolean
@@ -205,13 +205,16 @@ export function EnhancedPaymentWidget({
 
   useEffect(() => {
     let active = true
-    resumeWalletSession()
-      .then((address) => {
-        if (active && address) {
-          setWalletAddress(address)
-        }
+    if (!pera) return
+    pera
+      .reconnectSession()
+      .then((accounts) => {
+        if (!active || !accounts?.length) return
+        setWalletAddress(accounts[0])
       })
-      .catch(() => {})
+      .catch((error) => {
+        console.error("pera reconnect error", error)
+      })
     return () => {
       active = false
     }
@@ -266,8 +269,12 @@ export function EnhancedPaymentWidget({
 
     try {
       if (selectedWallet === "pera") {
-        const address = await connectWallet()
-        setWalletAddress(address)
+        if (pera?.session?.accounts?.length) {
+          setWalletAddress(pera.session.accounts[0])
+        } else {
+          const address = await connectWallet()
+          setWalletAddress(address)
+        }
       }
       setWalletBalance(null)
       setStep("confirm")

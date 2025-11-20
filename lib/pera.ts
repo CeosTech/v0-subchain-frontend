@@ -18,12 +18,14 @@ function requirePera(): PeraWalletConnect {
 
 function persistAccounts(accounts: string[]): void {
   try {
+    if (typeof localStorage === "undefined") return
     localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts))
   } catch {}
 }
 
 function clearStoredAccounts(): void {
   try {
+    if (typeof localStorage === "undefined") return
     localStorage.removeItem(ACCOUNTS_STORAGE_KEY)
   } catch {}
 }

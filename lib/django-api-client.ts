@@ -86,8 +86,14 @@ export interface Coupon {
 
 export interface SubscriptionPlan {
   id: string
+  code?: string
   name: string
   description?: string | null
+  amount?: string
+  currency?: string
+  interval?: "month" | "year" | string
+  trial_days?: number | null
+  contract_app_id?: number | null
   metadata?: Record<string, unknown>
   features: PlanFeature[]
   price_tiers: PriceTier[]
@@ -699,15 +705,16 @@ class DjangoAPIClient {
   }
 
   async createPlan(payload: {
+    code: string
     name: string
     description?: string | null
+    amount: string
+    currency: string
+    interval: "month" | "year"
+    trial_days?: number
+    is_active?: boolean
     metadata?: Record<string, unknown>
-    features?: Array<{ name: string; description?: string | null; sort_order?: number }>
-    price_tiers: Array<{
-      unit_amount: string | number
-      currency: string
-      up_to?: number | null
-    }>
+    contract_app_id?: number | null
   }) {
     return this.request<SubscriptionPlan>("/api/subscriptions/plans/", {
       method: "POST",
@@ -718,16 +725,16 @@ class DjangoAPIClient {
   async updatePlan(
     planId: string,
     payload: Partial<{
+      code: string
       name: string
       description: string | null
+      amount: string
+      currency: string
+      interval: "month" | "year"
+      trial_days: number
+      is_active: boolean
       metadata: Record<string, unknown>
-      features: Array<{ id?: string; name: string; description?: string | null; sort_order?: number }>
-      price_tiers: Array<{
-        id?: string
-        unit_amount: string | number
-        currency: string
-        up_to?: number | null
-      }>
+      contract_app_id: number | null
     }>,
   ) {
     return this.request<SubscriptionPlan>(`/api/subscriptions/plans/${planId}/`, {

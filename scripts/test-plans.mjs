@@ -47,19 +47,17 @@ const fetchJson = async (url, options = {}) => {
 const main = async () => {
   const uniqueSuffix = Date.now()
   const planPayload = {
+    code: `cli-test-${uniqueSuffix}`,
     name: `CLI Test Plan ${uniqueSuffix}`,
     description: "Temporary plan created by scripts/test-plans.mjs",
-    price_tiers: [
-      {
-        unit_amount: "42",
-        currency: "ALGO",
-        up_to: null,
-      },
-    ],
+    amount: "42.000000",
+    currency: "ALGO",
+    interval: "month",
+    trial_days: 0,
+    is_active: true,
     metadata: {
       created_by: "cli-test",
     },
-    features: [],
   }
 
   console.log("Creating plan…")
@@ -70,17 +68,10 @@ const main = async () => {
   })
   console.log(`✓ Created plan ${createdPlan.id}`)
 
-  const primaryTier = createdPlan.price_tiers?.[0]
   const updatePayload = {
     description: "Updated description via CLI test",
-    price_tiers: [
-      {
-        id: primaryTier?.id,
-        unit_amount: "43",
-        currency: primaryTier?.currency ?? "ALGO",
-        up_to: primaryTier?.up_to ?? null,
-      },
-    ],
+    amount: "43.000000",
+    trial_days: 5,
   }
 
   console.log("Updating plan…")

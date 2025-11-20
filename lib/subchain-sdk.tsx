@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { apiClient, type Subscription as DjangoSubscription, type SubscriptionPlan } from "@/lib/django-api-client"
-import { connectWallet, disconnectWallet, resumeWalletSession } from "@/lib/pera"
+import { connectWallet, disconnectWallet, pera } from "@/lib/pera"
 
 // Types
 export interface SubChainConfig {
@@ -162,13 +162,16 @@ export function SubscribeButton({
 
   useEffect(() => {
     let active = true
-    resumeWalletSession()
-      .then((address) => {
-        if (active && address) {
-          setWalletAddress(address)
-        }
+    if (!pera) return
+    pera
+      .reconnectSession()
+      .then((accounts) => {
+        if (!active || !accounts?.length) return
+        setWalletAddress(accounts[0])
       })
-      .catch(() => {})
+      .catch((error) => {
+        console.error("pera reconnect error", error)
+      })
     return () => {
       active = false
     }
@@ -179,8 +182,13 @@ export function SubscribeButton({
     try {
       let address = walletAddress
       if (!address) {
-        address = await connectWallet()
-        setWalletAddress(address)
+        if (pera?.session?.accounts?.length) {
+          address = pera.session.accounts[0]
+          setWalletAddress(address)
+        } else {
+          address = await connectWallet()
+          setWalletAddress(address)
+        }
       }
 
       const subscription = await subscribe(planId, address)

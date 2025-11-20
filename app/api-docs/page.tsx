@@ -249,17 +249,15 @@ export default function ApiDocsPage() {
   -H "Authorization: Bearer ${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "name": "Pro Plan",
-    "description": "Professional subscription with advanced features",
-    "amount": 2500,
+    "code": "starter-plan",
+    "name": "Starter Plan",
+    "description": "Accès de base",
+    "amount": "15.000000",
     "currency": "ALGO",
-    "interval": "monthly",
-    "trial_period_days": 14,
-    "features": [
-      "Advanced Analytics",
-      "Priority Support",
-      "Custom Integrations"
-    ]
+    "interval": "month",
+    "trial_days": 0,
+    "is_active": true,
+    "metadata": {}
   }'`,
 
     createSubscription: `curl -X POST https://api.subchain.dev/v1/subscriptions \\
