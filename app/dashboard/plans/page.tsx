@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { RefreshCcw, Search, Copy, Check, Gift, BadgePercent, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { RefreshCcw, Search, Copy, Check, Gift, BadgePercent, MoreHorizontal, Pencil, Trash2, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -73,6 +73,12 @@ export default function PlansPage() {
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null)
   const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null)
   const [codeTouched, setCodeTouched] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [shareTarget, setShareTarget] = useState<SubscriptionPlan | null>(null)
+  const [shareResult, setShareResult] = useState<{ share_url: string; qr_code: string } | null>(null)
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
+  const [shareCopied, setShareCopied] = useState(false)
 
   const filteredPlans = useMemo(() => {
     return plans.filter((plan) => {
@@ -145,6 +151,41 @@ export default function PlansPage() {
   const handleCodeChange = (value: string) => {
     setCodeTouched(true)
     setFormState((prev) => ({ ...prev, code: value.toLowerCase() }))
+  }
+
+  const handleSharePlan = async (plan: SubscriptionPlan) => {
+    setShareTarget(plan)
+    setShareDialogOpen(true)
+    setShareResult(null)
+    setShareError(null)
+    setShareCopied(false)
+    setShareLoading(true)
+    try {
+      const response = await apiClient.sharePlan(plan.id)
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Unable to generate share link.")
+      }
+      setShareResult(response.data)
+    } catch (error) {
+      setShareError(error instanceof Error ? error.message : "Unable to generate share link.")
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  const handleCopyShareUrl = async () => {
+    if (!shareResult?.share_url) return
+    try {
+      await navigator.clipboard.writeText(shareResult.share_url)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy the share link.",
+        variant: "destructive",
+      })
+    }
   }
 
   const codePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -478,6 +519,9 @@ export default function PlansPage() {
                                 </>
                               )}
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSharePlan(plan)}>
+                              <Share2 className="mr-2 h-4 w-4" /> Share
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEditDialog(plan)}>
                               <Pencil className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
@@ -688,6 +732,65 @@ export default function PlansPage() {
             </Button>
             <Button onClick={handleSubmit} disabled={processing}>
               {processing ? (dialogMode === "create" ? "Creating…" : "Saving…") : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={shareDialogOpen}
+        onOpenChange={(open) => {
+          setShareDialogOpen(open)
+          if (!open) {
+            setShareTarget(null)
+            setShareResult(null)
+            setShareError(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share {shareTarget?.name ?? "plan"}</DialogTitle>
+            <DialogDescription>
+              Generate a public checkout link and QR code to share this plan with customers.
+            </DialogDescription>
+          </DialogHeader>
+          {shareLoading && <p className="text-sm text-muted-foreground">Generating link…</p>}
+          {shareError && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              {shareError}
+            </div>
+          )}
+          {shareResult && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="share-url">Share URL</Label>
+                <div className="flex gap-2">
+                  <Input id="share-url" readOnly value={shareResult.share_url} />
+                  <Button onClick={handleCopyShareUrl} variant="outline">
+                    {shareCopied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>QR code</Label>
+                <div className="flex justify-center rounded-lg border bg-muted/30 p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={shareResult.qr_code}
+                    alt="Plan QR code"
+                    className="h-40 w-40 object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          {!shareLoading && !shareResult && !shareError && (
+            <p className="text-sm text-muted-foreground">No share link generated yet.</p>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShareDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

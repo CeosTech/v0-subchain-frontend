@@ -103,6 +103,16 @@ export interface SubscriptionPlan {
   updated_at: string
 }
 
+export interface PublicPlanResponse {
+  plan: SubscriptionPlan
+  share_url: string
+}
+
+export interface PlanShareResponse {
+  share_url: string
+  qr_code: string
+}
+
 export interface PaymentIntent {
   id: string
   status: string
@@ -704,6 +714,11 @@ class DjangoAPIClient {
     return this.request<SubscriptionPlan[]>("/api/subscriptions/plans/")
   }
 
+  async findPlanByCode(code: string) {
+    const query = this.buildQuery({ code })
+    return this.request<SubscriptionPlan[]>(`/api/subscriptions/plans/${query}`)
+  }
+
   async createPlan(payload: {
     code: string
     name: string
@@ -746,6 +761,18 @@ class DjangoAPIClient {
   async deletePlan(planId: string) {
     return this.request(`/api/subscriptions/plans/${planId}/`, {
       method: "DELETE",
+    })
+  }
+
+  async sharePlan(planId: string) {
+    return this.request<PlanShareResponse>(`/api/subscriptions/plans/${planId}/share/`, {
+      method: "POST",
+    })
+  }
+
+  async getPublicPlan(planCode: string) {
+    return this.request<PublicPlanResponse>(`/api/subscriptions/plans/public/${planCode}/`, {
+      skipAuth: true,
     })
   }
 
