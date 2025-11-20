@@ -94,6 +94,7 @@ export interface SubscriptionPlan {
   interval?: "month" | "year" | string
   trial_days?: number | null
   contract_app_id?: number | null
+  payout_wallet_address?: string | null
   metadata?: Record<string, unknown>
   features: PlanFeature[]
   price_tiers: PriceTier[]
@@ -730,6 +731,7 @@ class DjangoAPIClient {
     is_active?: boolean
     metadata?: Record<string, unknown>
     contract_app_id?: number | null
+    payout_wallet_address?: string | null
   }) {
     return this.request<SubscriptionPlan>("/api/subscriptions/plans/", {
       method: "POST",
@@ -750,6 +752,7 @@ class DjangoAPIClient {
       is_active: boolean
       metadata: Record<string, unknown>
       contract_app_id: number | null
+      payout_wallet_address: string | null
     }>,
   ) {
     return this.request<SubscriptionPlan>(`/api/subscriptions/plans/${planId}/`, {

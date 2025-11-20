@@ -50,6 +50,7 @@ interface PlanFormState {
   is_active: boolean
   metadata: string
   contract_app_id: string
+  payout_wallet_address: string
 }
 
 const defaultFormState: PlanFormState = {
@@ -63,6 +64,7 @@ const defaultFormState: PlanFormState = {
   is_active: true,
   metadata: "{}",
   contract_app_id: "",
+  payout_wallet_address: "",
 }
 
 const slugifyPlanCode = (value: string) =>
@@ -150,6 +152,7 @@ export default function PlansPage() {
       is_active: plan.is_active ?? plan.status === "active",
       metadata: plan.metadata ? JSON.stringify(plan.metadata, null, 2) : "{}",
       contract_app_id: plan.contract_app_id != null ? String(plan.contract_app_id) : "",
+      payout_wallet_address: plan.payout_wallet_address ?? "",
     })
     setCodeTouched(true)
     setDialogOpen(true)
@@ -299,6 +302,7 @@ export default function PlansPage() {
       is_active: boolean
       metadata: Record<string, unknown>
       contract_app_id?: number
+      payout_wallet_address?: string
     } = {
       code: trimmedCode,
       name: trimmedName,
@@ -313,6 +317,10 @@ export default function PlansPage() {
 
     if (contractAppId !== undefined) {
       payload.contract_app_id = contractAppId
+    }
+    const payoutAddress = formState.payout_wallet_address.trim()
+    if (payoutAddress) {
+      payload.payout_wallet_address = payoutAddress
     }
 
     setProcessing(true)
@@ -480,6 +488,7 @@ export default function PlansPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="w-[200px]">Plan ID</TableHead>
+                  <TableHead className="w-[220px]">Payout wallet</TableHead>
                   <TableHead className="w-[140px] text-right">Price</TableHead>
                   <TableHead className="w-[120px] text-right">Status</TableHead>
                   <TableHead className="w-[80px] text-right">Actions</TableHead>
@@ -488,14 +497,14 @@ export default function PlansPage() {
               <TableBody>
                 {plansLoading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Loading plans…
                     </TableCell>
                   </TableRow>
                 )}
                 {!plansLoading && filteredPlans.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       No plan matching your filters.
                     </TableCell>
                   </TableRow>
@@ -518,6 +527,9 @@ export default function PlansPage() {
                         {plan.description || "—"}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground break-all">{plan.id}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground break-all">
+                        {plan.payout_wallet_address || "Default"}
+                      </TableCell>
                       <TableCell className="text-right text-sm font-medium">
                         {primaryTier ? `${amount.toFixed(2)} ${currency}` : "On demand"}
                       </TableCell>
@@ -743,6 +755,21 @@ export default function PlansPage() {
                 placeholder="123456789"
               />
               <p className="text-xs text-muted-foreground">Algorand application used for this plan, if applicable.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="plan-payout-wallet">Payout wallet (optional)</Label>
+              <Input
+                id="plan-payout-wallet"
+                placeholder="ALGOSOMEADDRESS..."
+                value={formState.payout_wallet_address}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, payout_wallet_address: event.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to reuse your account wallet. Set it to direct funds to another Algorand address.
+              </p>
             </div>
 
             <div className="space-y-2">
