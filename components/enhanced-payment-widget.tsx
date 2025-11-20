@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/django-api-client"
-import { connectWallet } from "@/lib/pera"
+import { connectWallet, disconnectWallet, resumeWalletSession } from "@/lib/pera"
 
 interface PaymentWidgetProps {
   isOpen: boolean
@@ -147,6 +147,7 @@ export function EnhancedPaymentWidget({
   const [transactionHash, setTransactionHash] = useState<string | null>(null)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [confirmationDetails, setConfirmationDetails] = useState<{
     subscriptionId?: string
     invoiceId?: string
@@ -199,6 +200,20 @@ export function EnhancedPaymentWidget({
   useEffect(() => {
     return () => {
       clearProgressTimer()
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    resumeWalletSession()
+      .then((address) => {
+        if (active && address) {
+          setWalletAddress(address)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
     }
   }, [])
 
@@ -262,6 +277,22 @@ export function EnhancedPaymentWidget({
       setError(message)
     } finally {
       setIsConnecting(false)
+    }
+  }
+
+  const handleDisconnectWallet = async () => {
+    setIsDisconnecting(true)
+    setError(null)
+    try {
+      await disconnectWallet()
+      setWalletAddress(null)
+      setSelectedWallet(null)
+      setStep("select_wallet")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to disconnect wallet."
+      setError(message)
+    } finally {
+      setIsDisconnecting(false)
     }
   }
 
@@ -930,6 +961,12 @@ export function EnhancedPaymentWidget({
                         Paste the Algorand address if you cannot connect automatically.
                       </p>
                     </div>
+
+                    {walletAddress && (
+                      <Button variant="ghost" className="w-full" onClick={handleDisconnectWallet} disabled={isDisconnecting}>
+                        {isDisconnecting ? "Disconnecting..." : "Use another wallet"}
+                      </Button>
+                    )}
                   </motion.div>
                 )}
 

@@ -2,10 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { Eye, EyeOff, User, Building, Wallet, ArrowRight, Check, MailCheck } from "lucide-react"
+import { Eye, EyeOff, User, Building, Wallet, ArrowRight, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,7 +17,7 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
-import { connectWallet } from "@/lib/pera"
+import { connectWallet, disconnectWallet, pera } from "@/lib/pera"
 
 type AccountType = "individual" | "business"
 
@@ -27,7 +28,6 @@ interface SignupData {
   lastName: string
   email: string
   password: string
-  phone: string
   // Business fields
   companyName: string
   vatNumber: string
@@ -53,9 +53,8 @@ export default function SignUpPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [walletConnected, setWalletConnected] = useState(false)
-  const [signupDetail, setSignupDetail] = useState<string | null>(null)
-  const [resendStatus, setResendStatus] = useState<{ message: string; error?: boolean } | null>(null)
-  const [resendLoading, setResendLoading] = useState(false)
+  const [isDisconnectingWallet, setIsDisconnectingWallet] = useState(false)
+  const router = useRouter()
 
   const [formData, setFormData] = useState<SignupData>({
     accountType: "",
@@ -63,7 +62,6 @@ export default function SignUpPage() {
     lastName: "",
     email: "",
     password: "",
-    phone: "",
     companyName: "",
     vatNumber: "",
     businessType: "",
@@ -81,10 +79,33 @@ export default function SignUpPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleWalletConnect = async () => {
+  useEffect(() => {
+    let active = true
+    if (!pera) return
+    pera
+      .reconnectSession()
+      .then((accounts) => {
+        if (!active || !accounts?.length) return
+        setWalletConnected(true)
+        setFormData((prev) => ({ ...prev, walletAddress: accounts[0] }))
+      })
+      .catch((error) => {
+        console.error("pera reconnect error", error)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleWalletConnect = async (forceNewConnection = false) => {
     setIsLoading(true)
     try {
-      const address = await connectWallet({ forceNewConnection: true })
+      if (!forceNewConnection && pera?.session?.accounts?.length) {
+        setWalletConnected(true)
+        updateFormData("walletAddress", pera.session.accounts[0])
+        return
+      }
+      const address = await connectWallet({ forceNewConnection })
       setWalletConnected(true)
       updateFormData("walletAddress", address)
     } catch (e) {
@@ -94,10 +115,22 @@ export default function SignUpPage() {
     }
   }
 
+  const handleWalletDisconnect = async () => {
+    setIsDisconnectingWallet(true)
+    try {
+      await disconnectWallet()
+      setWalletConnected(false)
+      setFormData((prev) => ({ ...prev, walletAddress: "" }))
+    } catch (e) {
+      console.log("pera disconnect error", e)
+    } finally {
+      setIsDisconnectingWallet(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setResendStatus(null)
     if (!formData.walletAddress) {
       setIsLoading(false)
       return
@@ -115,34 +148,11 @@ export default function SignUpPage() {
         setIsLoading(false)
         return
       }
-      setSignupDetail(resp.data.detail || "Compte créé. Vérifiez votre boîte mail avant de vous connecter.")
-      setIsLoading(false)
+      router.push("/dashboard")
     } catch (e) {
       console.log("register error", e)
-      setIsLoading(false)
-    }
-  }
-
-  const handleResendVerification = async () => {
-    if (!formData.email) return
-    setResendLoading(true)
-    setResendStatus(null)
-    try {
-      const resp = await apiClient.resendVerificationEmail(formData.email)
-      if (resp.error) {
-        setResendStatus({ message: resp.error, error: true })
-      } else {
-        setResendStatus({
-          message: resp.data?.detail || "Verification email resent. Please check your inbox.",
-        })
-      }
-    } catch (error) {
-      setResendStatus({
-        message: error instanceof Error ? error.message : "Unable to resend verification email.",
-        error: true,
-      })
     } finally {
-      setResendLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -169,63 +179,6 @@ export default function SignUpPage() {
 
   const canSubmit = () => {
     return walletConnected && formData.acceptTerms && formData.acceptPrivacy
-  }
-
-  if (signupDetail) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-2xl"
-        >
-          <Card>
-            <CardHeader className="text-center space-y-4">
-              <div className="mb-2 flex items-center justify-center">
-                <Image src="/assets/subchain-glyph.svg" alt="SubChain logo" width={44} height={44} priority />
-              </div>
-              <CardTitle className="text-2xl">Check your inbox</CardTitle>
-              <CardDescription>
-                {`We've sent a verification link. Confirm your email to activate your SubChain console.`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white">
-                <MailCheck className="h-8 w-8" />
-              </div>
-              <div className="space-y-2 text-white/80">
-                <p className="text-base">{signupDetail}</p>
-                <p className="text-sm text-white/60">
-                  Nous avons envoyé un email à <span className="font-semibold text-white">{formData.email}</span>. Une
-                  fois validé, revenez vous connecter depuis la page de login.
-                </p>
-              </div>
-              {resendStatus && (
-                <div
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-sm",
-                    resendStatus.error ? "border-red-500/60 text-red-200" : "border-emerald-500/60 text-emerald-100",
-                  )}
-                >
-                  {resendStatus.message}
-                </div>
-              )}
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Button className="w-full sm:w-auto" onClick={handleResendVerification} disabled={resendLoading}>
-                  {resendLoading ? "Sending..." : "Resend verification email"}
-                </Button>
-                <Link href="/auth/signin" className="w-full sm:w-auto">
-                  <Button variant="outline" className="w-full">
-                    Back to login
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    )
   }
 
   return (
@@ -444,16 +397,6 @@ export default function SignUpPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    placeholder="+33123456789"
-                    value={formData.phone}
-                    onChange={(e) => updateFormData("phone", e.target.value)}
-                  />
-                </div>
-
                 <div className="flex space-x-2">
                   <Button variant="outline" onClick={() => setCurrentStep(1)} className="flex-1">
                     Back
@@ -549,6 +492,14 @@ export default function SignUpPage() {
                     <p className="mt-1 font-mono text-sm text-green-700 dark:text-green-300">
                       {formData.walletAddress}
                     </p>
+                    <Button
+                      variant="ghost"
+                      className="mt-3 w-full text-green-700 hover:text-green-600 dark:text-green-300"
+                      onClick={handleWalletDisconnect}
+                      disabled={isDisconnectingWallet}
+                    >
+                      {isDisconnectingWallet ? "Disconnecting..." : "Use another wallet"}
+                    </Button>
                   </div>
                 ) : (
                   <Button variant="outline" className="w-full bg-transparent" onClick={handleWalletConnect} disabled={isLoading}>
@@ -624,6 +575,10 @@ export default function SignUpPage() {
                       </p>
                     </div>
                   </div>
+
+                  <p className="text-sm text-muted-foreground text-center">
+                    Vous pouvez vous connecter immédiatement, la vérification email est désactivée pour la démo.
+                  </p>
                 </div>
 
                 <div className="flex space-x-2">

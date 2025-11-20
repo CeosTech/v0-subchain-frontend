@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { apiClient, type Subscription as DjangoSubscription, type SubscriptionPlan } from "@/lib/django-api-client"
-import { connectWallet } from "@/lib/pera"
+import { connectWallet, disconnectWallet, resumeWalletSession } from "@/lib/pera"
 
 // Types
 export interface SubChainConfig {
@@ -158,6 +158,21 @@ export function SubscribeButton({
   const { subscribe } = useSubChain()
   const [loading, setLoading] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [isDisconnecting, setIsDisconnecting] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    resumeWalletSession()
+      .then((address) => {
+        if (active && address) {
+          setWalletAddress(address)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleSubscribe = async () => {
     setLoading(true)
@@ -177,14 +192,38 @@ export function SubscribeButton({
     }
   }
 
+  const handleDisconnectWallet = async () => {
+    setIsDisconnecting(true)
+    try {
+      await disconnectWallet()
+      setWalletAddress(null)
+    } catch (error) {
+      onError?.(error as Error)
+    } finally {
+      setIsDisconnecting(false)
+    }
+  }
+
   return (
-    <button
-      onClick={handleSubscribe}
-      disabled={loading}
-      className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 ${className}`}
-    >
-      {loading ? "Processing…" : walletAddress ? children : "Connect Wallet"}
-    </button>
+    <>
+      <button
+        onClick={handleSubscribe}
+        disabled={loading}
+        className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 ${className}`}
+      >
+        {loading ? "Processing…" : walletAddress ? children : "Connect Wallet"}
+      </button>
+      {walletAddress && (
+        <button
+          type="button"
+          onClick={handleDisconnectWallet}
+          disabled={isDisconnecting}
+          className="mt-2 text-xs text-blue-300 hover:text-blue-200 disabled:opacity-50"
+        >
+          {isDisconnecting ? "Disconnecting…" : "Use another wallet"}
+        </button>
+      )}
+    </>
   )
 }
 

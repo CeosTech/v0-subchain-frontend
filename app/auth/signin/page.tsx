@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Wallet, ArrowRight, MailCheck } from "lucide-react"
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { apiClient } from "@/lib/django-api-client"
-import { connectWallet } from "@/lib/pera"
+import { connectWallet, disconnectWallet, resumeWalletSession } from "@/lib/pera"
 import { cn } from "@/lib/utils"
 
 export default function SignInPage() {
@@ -26,6 +26,22 @@ export default function SignInPage() {
   const [resendNotice, setResendNotice] = useState<{ message: string; error?: boolean } | null>(null)
   const [resendLoading, setResendLoading] = useState(false)
   const [pendingEmail, setPendingEmail] = useState("")
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [isDisconnectingWallet, setIsDisconnectingWallet] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    resumeWalletSession()
+      .then((address) => {
+        if (active && address) {
+          setWalletAddress(address)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,13 +75,26 @@ export default function SignInPage() {
   const handleWalletConnect = async () => {
     setIsLoading(true)
     try {
-      const address = await connectWallet({ forceNewConnection: true })
+      const address = await connectWallet()
+      setWalletAddress(address)
       console.log("wallet connected", address)
       window.location.href = "/dashboard"
     } catch (e) {
       console.log("pera connect error", e)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleWalletDisconnect = async () => {
+    setIsDisconnectingWallet(true)
+    try {
+      await disconnectWallet()
+      setWalletAddress(null)
+    } catch (e) {
+      console.log("pera disconnect error", e)
+    } finally {
+      setIsDisconnectingWallet(false)
     }
   }
 
@@ -233,15 +262,20 @@ export default function SignInPage() {
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full bg-transparent"
-              onClick={handleWalletConnect}
-              disabled={isLoading}
-            >
+            <Button variant="outline" className="w-full bg-transparent" onClick={handleWalletConnect} disabled={isLoading}>
               <Wallet className="mr-2 h-4 w-4" />
-              Connect with Pera Wallet
+              {walletAddress ? `Continue as ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Connect with Pera Wallet"}
             </Button>
+            {walletAddress && (
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={handleWalletDisconnect}
+                disabled={isDisconnectingWallet}
+              >
+                {isDisconnectingWallet ? "Disconnecting..." : "Use another wallet"}
+              </Button>
+            )}
 
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}

@@ -1,47 +1,96 @@
 import { PeraWalletConnect } from "@perawallet/connect"
 
-let pera: PeraWalletConnect | null = null
+const ACCOUNTS_STORAGE_KEY = "pera_wallet_accounts"
+export const pera = typeof window !== "undefined" ? new PeraWalletConnect() : null
 
-function getPera(): PeraWalletConnect {
+if (pera?.connector) {
+  pera.connector.on("disconnect", () => {
+    clearStoredAccounts()
+  })
+}
+
+function requirePera(): PeraWalletConnect {
   if (!pera) {
-    pera = new PeraWalletConnect()
-    pera.connector?.on("disconnect", () => {
-      try {
-        localStorage.removeItem("pera_wallet_accounts")
-      } catch {}
-    })
+    throw new Error("Pera Wallet is only available in the browser")
   }
   return pera
 }
 
+function persistAccounts(accounts: string[]): void {
+  try {
+    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts))
+  } catch {}
+}
+
+function clearStoredAccounts(): void {
+  try {
+    localStorage.removeItem(ACCOUNTS_STORAGE_KEY)
+  } catch {}
+}
+
+async function reconnectExistingSession(instance: PeraWalletConnect): Promise<string | null> {
+  try {
+    const existing = await instance.reconnectSession()
+    if (existing && existing.length > 0) {
+      persistAccounts(existing)
+      return existing[0]
+    }
+  } catch {}
+  return null
+}
+
+export async function resumeWalletSession(): Promise<string | null> {
+  if (typeof window === "undefined") return null
+  const instance = requirePera()
+  return reconnectExistingSession(instance)
+}
+
 export async function connectWallet(options?: { forceNewConnection?: boolean }): Promise<string> {
-  if (typeof window === "undefined") throw new Error("No window")
+  if (typeof window === "undefined") throw new Error("Wallet connection unavailable")
 
-  if (options?.forceNewConnection) {
-    await disconnectWallet()
+  const instance = requirePera()
+
+  if (options?.forceNewConnection && instance.session?.accounts?.length) {
+    await instance.disconnect()
   }
 
-  const instance = getPera()
-  if (!options?.forceNewConnection) {
-    try {
-      const existing = await instance.reconnectSession()
-      if (existing && existing.length > 0) {
-        try { localStorage.setItem("pera_wallet_accounts", JSON.stringify(existing)) } catch {}
-        return existing[0]
+  const cachedAccounts = instance.session?.accounts
+  if (!options?.forceNewConnection && cachedAccounts?.length) {
+    persistAccounts(cachedAccounts)
+    return cachedAccounts[0]
+  }
+
+  try {
+    const accounts = await instance.connect()
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No accounts")
+    }
+    persistAccounts(accounts)
+    return accounts[0]
+  } catch (error: unknown) {
+    const typedError = error as { data?: { type?: string }; message?: string }
+    const isSessionAlreadyConnectedError =
+      typedError?.data?.type === "SESSION_ALREADY_CONNECTED" ||
+      (typeof typedError?.message === "string" &&
+        typedError.message.toLowerCase().includes("session currently connected"))
+
+    if (isSessionAlreadyConnectedError) {
+      await instance.disconnect()
+      const accounts = await instance.connect()
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts")
       }
-    } catch {}
+      persistAccounts(accounts)
+      return accounts[0]
+    }
+    throw error
   }
-
-  const accounts = await instance.connect()
-  if (!accounts || accounts.length === 0) throw new Error("No accounts")
-  try { localStorage.setItem("pera_wallet_accounts", JSON.stringify(accounts)) } catch {}
-  return accounts[0]
 }
 
 export async function disconnectWallet(): Promise<void> {
-  if (pera) {
-    try { await pera.disconnect() } catch {}
-    pera = null
-  }
-  try { localStorage.removeItem("pera_wallet_accounts") } catch {}
+  if (!pera) return
+  try {
+    await pera.disconnect()
+  } catch {}
+  clearStoredAccounts()
 }
