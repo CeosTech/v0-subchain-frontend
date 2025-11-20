@@ -49,13 +49,11 @@ import type {
 
 const methodOptions = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 const statusFilterOptions = [
-  { label: "All statuses", value: "" },
   { label: "Pending", value: "pending" },
   { label: "Verified", value: "verified" },
   { label: "Failed", value: "failed" },
 ]
 const usageTypeFilters = [
-  { label: "All usage", value: "" },
   { label: "Top ups", value: "top_up" },
   { label: "Consumption", value: "consumption" },
 ]
@@ -1586,13 +1584,17 @@ function ReceiptsTab() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="space-y-2">
             <Label htmlFor="receipt-status">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status || "all"}
+              onValueChange={(value) => setStatus(value === "all" ? "" : value)}
+            >
               <SelectTrigger id="receipt-status">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
                 {statusFilterOptions.map((option) => (
-                  <SelectItem key={option.value || "all"} value={option.value}>
+                  <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
                 ))}
@@ -1610,12 +1612,15 @@ function ReceiptsTab() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="receipt-method">Method</Label>
-            <Select value={method} onValueChange={setMethod}>
+            <Select
+              value={method || "all"}
+              onValueChange={(value) => setMethod(value === "all" ? "" : value)}
+            >
               <SelectTrigger id="receipt-method">
                 <SelectValue placeholder="All methods" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All methods</SelectItem>
+                <SelectItem value="all">All methods</SelectItem>
                 {methodOptions.map((value) => (
                   <SelectItem key={value} value={value}>
                     {value}
@@ -1811,12 +1816,15 @@ function CreditSubscriptionsTab({ tenantId, paywallBase }: { tenantId: string; p
             <CardDescription>Monitor prepaid balances and trigger manual consumption when needed.</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Select value={planFilter} onValueChange={setPlanFilter}>
+            <Select
+              value={planFilter || "all"}
+              onValueChange={(value) => setPlanFilter(value === "all" ? "" : value)}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Filter by plan" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All plans</SelectItem>
+                <SelectItem value="all">All plans</SelectItem>
                 {plans.map((plan) => (
                   <SelectItem key={plan.id} value={plan.slug}>
                     {plan.name}
@@ -1926,13 +1934,17 @@ function CreditSubscriptionsTab({ tenantId, paywallBase }: { tenantId: string; p
             <CardDescription>Auditable top-ups and consumption events.</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Select value={usageType} onValueChange={setUsageType}>
+            <Select
+              value={usageType || "all"}
+              onValueChange={(value) => setUsageType(value === "all" ? "" : value)}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Usage type" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All usage</SelectItem>
                 {usageTypeFilters.map((option) => (
-                  <SelectItem key={option.value || "all"} value={option.value}>
+                  <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
                 ))}

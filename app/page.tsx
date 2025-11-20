@@ -96,71 +96,26 @@ const heroMetrics = [
 const x402Benefits = [
   {
     icon: Zap,
-    title: {
-      fr: "Paywalls auto-résolutifs",
-      en: "Self-resolving paywalls",
-    },
-    description: {
-      fr: "Les réponses HTTP 402 transportent automatiquement le montant, la devise et l'adresse Algorand à créditer. Vos clients voient le contexte, signent, et la requête est rejouée sans friction.",
-      en: "HTTP 402 responses carry the price, currency, and Algorand address to credit. Users see the context, approve the payment, and the request retries instantly.",
-    },
+    title: "Self-resolving paywalls",
+    description:
+      "HTTP 402 responses embed the price, currency, and Algorand payout address so the client approves once and the original request replays automatically.",
   },
   {
     icon: Shield,
-    title: {
-      fr: "Reçus signés & traçables",
-      en: "Signed, traceable receipts",
-    },
-    description: {
-      fr: "Chaque paiement génère un reçu x402 vérifiable qui alimente vos exports financiers et déclenche les webhooks SubChain pour livrer la ressource protégée.",
-      en: "Each payment issues a verifiable x402 receipt, feeding finance exports and triggering SubChain webhooks to ship the protected asset.",
-    },
+    title: "Signed, auditable receipts",
+    description:
+      "Every payment emits a verifiable x402 receipt that feeds finance exports, webhooks, and your on-chain reconciliation.",
   },
   {
     icon: Globe,
-    title: {
-      fr: "Routes multi-produits",
-      en: "Multi-product routing",
-    },
-    description: {
-      fr: "Links, widgets ou plans de crédits pointent tous vers le même protocole. Paramétrez les splits de revenus, les callbacks et les métadonnées sans redéployer votre backend.",
-      en: "Links, widgets, or credit packs all converge on one protocol—configure revenue splits, callbacks, and metadata without redeploying.",
-    },
+    title: "One protocol, many surfaces",
+    description:
+      "Links, widgets, and prepaid credits all converge on the same contract—revenue splits and metadata are configured once, no redeploy required.",
   },
 ]
 
-const x402UseCases = [
-  {
-    title: {
-      fr: "APIs facturées à la requête",
-      en: "Pay-per-request APIs",
-    },
-    description: {
-      fr: "Exposez vos endpoints publiquement, laissez x402 déclencher la fenêtre de paiement quand une limite est atteinte, puis rejouez l'appel avec le reçu dans l'en-tête.",
-      en: "Keep your endpoints public; x402 prompts for payment when limits are hit and replays the call with the receipt header attached.",
-    },
-  },
-  {
-    title: {
-      fr: "Widgets premium embarqués",
-      en: "Embedded premium widgets",
-    },
-    description: {
-      fr: "Ajoutez un paywall x402 à vos dashboards, rapports ou intégrations partenaires sans forcer la création de compte. Chaque widget suit son propre slug et analytics.",
-      en: "Wrap dashboards, reports, or partner embeds with an x402 paywall—no forced signup, each widget keeps its own slug and analytics.",
-    },
-  },
-  {
-    title: {
-      fr: "Crédits de consommation modulaires",
-      en: "Modular usage credits",
-    },
-    description: {
-      fr: "Offrez des paquets de crédits rechargeables (IA, data, infrastructure) et laissez les clients consommer via `/credits/{plan}` avec suivi des soldes en temps réel.",
-      en: "Sell rechargeable credit packs (AI, data, infrastructure) and let clients consume via `/credits/{plan}`, with real-time balance tracking.",
-    },
-  },
-]
+const X402_REPO_URL = "https://github.com/coinbase/x402"
+const ALGORAND_URL = "https://www.algorand.com"
 
 export default function HomePage() {
   return (
@@ -263,77 +218,92 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center"
             >
-              <Badge className="mx-auto mb-6 border-white/20 bg-white/10 text-white/80">
-                Protocole x402 • x402 protocol
-              </Badge>
+              <Badge className="mx-auto mb-6 border-white/20 bg-white/10 text-white/80">x402 protocol</Badge>
               <h2 className="text-4xl font-semibold text-white md:text-5xl">
-                Le micropaiement standardisé
-                <span className="mt-1 block text-xl font-normal text-white/60">Standardized micropayment rails</span>
+                Standardized micropayments built on HTTP 402
+                <span className="mt-1 block text-xl font-normal text-white/60">Native support for Algorand wallets and ledgers</span>
               </h2>
-              <div className="mx-auto mt-4 max-w-3xl text-lg text-white/60">
+              <div className="mx-auto mt-4 max-w-3xl space-y-3 text-lg text-white/60">
                 <p>
-                  Nous avons industrialisé la réponse HTTP 402 pour Algorand : un seul flux couvre les paywalls API, les
-                  liens de paiement et les plans de crédits, tout en respectant vos règles de facturation.
+                  We adapted the open x402 spec for
+                  {" "}
+                  <Link href={ALGORAND_URL} className="underline-offset-4 hover:underline" target="_blank" rel="noreferrer">
+                    Algorand
+                  </Link>
+                  {" "}
+                  so API paywalls, shareable payment links, and prepaid credits reuse the exact same protocol.
+                  Pricing logic stays on your backend—SubChain takes care of signing, settlement, and retries.
                 </p>
-                <p className="mt-3 text-base text-white/55">
-                  We industrialized HTTP 402 on Algorand: one flow secures API paywalls, payment links, and credit packs
-                  while honoring your pricing rules.
+                <p className="text-base text-white/55">
+                  The specification remains fully open source.
+                  {" "}
+                  <Link href={X402_REPO_URL} className="underline-offset-4 hover:underline" target="_blank" rel="noreferrer">
+                    Browse the x402 repo on GitHub
+                  </Link>
+                  {" "}
+                  to inspect the wire format or extend it for your own facilitators.
                 </p>
               </div>
             </motion.div>
 
-            <div className="mt-14 grid gap-10 lg:grid-cols-2">
+            <div className="mt-14 grid gap-10 lg:grid-cols-[2fr,1fr]">
               <div className="space-y-5">
                 {x402Benefits.map((item) => (
-                  <div
-                    key={item.title.fr}
-                    className="glass-panel flex gap-4 rounded-3xl border border-white/10 px-6 py-5"
-                  >
+                  <div key={item.title} className="glass-panel flex gap-4 rounded-3xl border border-white/10 px-6 py-5">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
                       <item.icon className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white">
-                        {item.title.fr}
-                        <span className="mt-1 block text-sm font-normal text-white/60">{item.title.en}</span>
-                      </h3>
-                      <p className="mt-2 text-sm text-white/65">
-                        {item.description.fr}
-                        <span className="mt-2 block text-white/55">{item.description.en}</span>
-                      </p>
+                      <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                      <p className="mt-2 text-sm text-white/65">{item.description}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="space-y-5">
-                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/60">
-                  Use cases • Cas d&apos;usage
-                </div>
-                {x402UseCases.map((useCase, index) => (
-                  <motion.div
-                    key={useCase.title.fr}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                  >
-                    <Card className="glass-panel border border-white/10 text-left">
-                      <CardHeader>
-                        <CardTitle className="text-white">
-                          {useCase.title.fr}
-                          <span className="mt-1 block text-sm font-normal text-white/60">{useCase.title.en}</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm leading-relaxed text-white/65">
-                          {useCase.description.fr}
-                          <span className="mt-2 block text-white/55">{useCase.description.en}</span>
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                <Card className="glass-panel border border-white/10 text-left">
+                  <CardHeader>
+                    <CardTitle className="text-white">Built for Algorand first</CardTitle>
+                    <CardDescription className="text-white/70">
+                      Deterministic settlement, sub-second finality, and <span className="text-white">0.001 ALGO</span> fees keep micropayments viable.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-white/70">
+                    <p>
+                      SubChain signs x402 receipts with Algorand keys, so merchants always see which wallet was credited and when it hit the ledger.
+                    </p>
+                    <Link
+                      href={ALGORAND_URL}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-blue-200 hover:text-white"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Learn more about Algorand
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </CardContent>
+                </Card>
+                <Card className="glass-panel border border-white/10 text-left">
+                  <CardHeader>
+                    <CardTitle className="text-white">Open by design</CardTitle>
+                    <CardDescription className="text-white/70">
+                      Implementers can extend the HTTP spec, add new facilitators, or self-host the entire flow.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-white/70">
+                    <p>Fork the spec, inspect the wire format, or contribute improvements alongside the rest of the x402 community.</p>
+                    <Link
+                      href={X402_REPO_URL}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-blue-200 hover:text-white"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View the x402 GitHub repo
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

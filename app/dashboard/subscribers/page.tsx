@@ -547,14 +547,19 @@ export default function SubscribersPage() {
                 <div className="space-y-2">
                   <Label htmlFor="coupon">Coupon (optional)</Label>
                   <Select
-                    value={subscriptionForm.couponId}
-                    onValueChange={(value) => setSubscriptionForm((prev) => ({ ...prev, couponId: value }))}
+                    value={subscriptionForm.couponId || "none"}
+                    onValueChange={(value) =>
+                      setSubscriptionForm((prev) => ({
+                        ...prev,
+                        couponId: value === "none" ? "" : value,
+                      }))
+                    }
                   >
                     <SelectTrigger id="coupon">
                       <SelectValue placeholder="No coupon" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No coupon</SelectItem>
+                      <SelectItem value="none">No coupon</SelectItem>
                       {coupons.map((coupon) => (
                         <SelectItem key={coupon.id} value={coupon.id}>
                           {coupon.code}
