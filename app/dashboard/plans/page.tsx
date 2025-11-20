@@ -2,12 +2,32 @@
 
 import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { RefreshCcw, Search, Copy, Check, Gift, BadgePercent, MoreHorizontal, Pencil, Trash2, Share2 } from "lucide-react"
+import {
+  RefreshCcw,
+  Search,
+  Copy,
+  Check,
+  Gift,
+  BadgePercent,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Share2,
+  X,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -589,15 +609,22 @@ export default function PlansPage() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{dialogMode === "create" ? "Create a new plan" : "Edit plan"}</DialogTitle>
-            <DialogDescription>
-              {dialogMode === "create"
-                ? "Define the plan details; price tiers and metadata will be adjusted automatically."
-                : "Update the plan details; changes take effect immediately for new subscriptions."}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <DialogHeader className="text-left">
+              <DialogTitle>{dialogMode === "create" ? "Create a new plan" : "Edit plan"}</DialogTitle>
+              <DialogDescription>
+                {dialogMode === "create"
+                  ? "Define the plan details; price tiers and metadata will be adjusted automatically."
+                  : "Update the plan details; changes take effect immediately for new subscriptions."}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Close">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
