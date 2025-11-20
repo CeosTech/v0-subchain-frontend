@@ -479,6 +479,7 @@ export default function PlansPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead className="w-[200px]">Plan ID</TableHead>
                   <TableHead className="w-[140px] text-right">Price</TableHead>
                   <TableHead className="w-[120px] text-right">Status</TableHead>
                   <TableHead className="w-[80px] text-right">Actions</TableHead>
@@ -487,14 +488,14 @@ export default function PlansPage() {
               <TableBody>
                 {plansLoading && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Loading plans…
                     </TableCell>
                   </TableRow>
                 )}
                 {!plansLoading && filteredPlans.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No plan matching your filters.
                     </TableCell>
                   </TableRow>
@@ -510,12 +511,13 @@ export default function PlansPage() {
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">{plan.name}</span>
-                          <span className="text-xs text-muted-foreground">{plan.id}</span>
+                          <span className="text-xs text-muted-foreground">{plan.code || "No code"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {plan.description || "—"}
                       </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground break-all">{plan.id}</TableCell>
                       <TableCell className="text-right text-sm font-medium">
                         {primaryTier ? `${amount.toFixed(2)} ${currency}` : "On demand"}
                       </TableCell>
