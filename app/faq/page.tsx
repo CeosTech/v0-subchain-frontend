@@ -11,14 +11,44 @@ const faqs = [
     category: "Getting started",
     items: [
       {
-        question: "How do I activate my SubChain account?",
+        question: "How do I launch my SubChain workspace?",
         answer:
-          "Create a workspace, verify your email, and connect an Algorand wallet. Once connected, you can publish plans and start accepting subscriptions immediately.",
+          "Sign up, confirm your email, and connect an Algorand wallet (Pera, Defly, or WalletConnect). You can immediately create plans, configure payouts, and generate hosted checkout links.",
       },
       {
-        question: "What wallets does SubChain support?",
+        question: "Which blockchains and wallets are supported?",
         answer:
-          "We support Pera, Defly, Exodus, hardware wallets via WalletConnect, and any Algorand wallet that provides a signer. More integrations are added regularly.",
+          "SubChain is built for Algorand. We support Pera, Defly, Exodus, hardware wallets through WalletConnect, and any signer compatible with the Algorand SDK. Shared plans inherit your payout wallet unless you specify another address.",
+      },
+    ],
+  },
+  {
+    category: "Plans & sharing",
+    items: [
+      {
+        question: "How do hosted /pay links work?",
+        answer:
+          "Every plan exposes a public link (e.g. /pay?plan=starter-plan). Visitors who are not authenticated are redirected to /auth/signin with the redirect query preserved, so they return to the same checkout once they log in.",
+      },
+      {
+        question: "Can I embed checkout widgets or QR codes?",
+        answer:
+          "Yes. The Share action generates a link and QR code for each plan. You can drop these into demos, slides, documentation, or even print them for live events.",
+      },
+    ],
+  },
+  {
+    category: "Micropayments & x402",
+    items: [
+      {
+        question: "What is the x402 protocol?",
+        answer:
+          "x402 is an open HTTP 402 flow for micropayments. SubChain implements it on Algorand: when the API returns 402, we show the payment challenge, collect the wallet signature, then replay the original request with a signed receipt.",
+      },
+      {
+        question: "Do you support prepaid credits or API rate limiting?",
+        answer:
+          "Yes. The Micropayments tab lets you sell credit packs, throttle API calls, and monitor balances live. Receipts are signed, auditable, and exportable for finance or compliance teams.",
       },
     ],
   },
@@ -26,29 +56,29 @@ const faqs = [
     category: "Billing & payouts",
     items: [
       {
-        question: "When do I receive payouts?",
+        question: "When do I receive funds?",
         answer:
-          "Settlement is instant on Algorand. Funds land in your connected wallet as soon as the customer authorizes the transaction. There is no batched payout schedule.",
+          "Settlement is instant on Algorand. Funds land in the payout wallet configured on each plan as soon as the customer confirms the transaction. There is no batched payout schedule.",
       },
       {
-        question: "Can I charge in stablecoins?",
+        question: "Which currencies can I charge?",
         answer:
-          "Yes. SubChain supports ALGO, USDC, and any Algorand Standard Asset you enable. You can mix currencies across plans or convert payouts programmatically using our API.",
+          "SubChain supports ALGO, USDC, and any Algorand Standard Asset you enable. You can mix currencies across plans or programmatically convert payouts using our API and webhooks.",
       },
     ],
   },
   {
-    category: "Pricing",
+    category: "Pricing & accounts",
     items: [
       {
-        question: "Do you charge monthly fees?",
+        question: "Do you charge platform fees?",
         answer:
-          "No monthly fees or setup costs. SubChain charges 2.4% on successful subscription renewals plus the standard Algorand network fee (~$0.001).",
+          "You only pay when you earn: 2.4% on successful subscription renewals plus the standard Algorand network fee (≈ $0.001). No setup or subscription fees.",
       },
       {
-        question: "Is there a free trial?",
+        question: "Can I test the product before going live?",
         answer:
-          "Yes. You can explore the console, issue test API keys, and simulate subscriptions on TestNet before processing live transactions.",
+          "Absolutely. Use the TestNet workspace to simulate plans, micropayments, and webhook flows without touching real funds. Switch to MainNet when you’re ready.",
       },
     ],
   },
@@ -56,14 +86,14 @@ const faqs = [
     category: "Security & compliance",
     items: [
       {
-        question: "How does SubChain secure customer data?",
+        question: "How do you secure customer data and wallets?",
         answer:
-          "All sensitive data is encrypted in transit and at rest. Wallet keys remain client-side, and we maintain a SOC 2-aligned control framework with quarterly audits.",
+          "Wallet keys stay client-side. All API traffic is JWT-authenticated, encrypted in transit and at rest, and every Algorand transaction is signed explicitly by the merchant’s wallet.",
       },
       {
-        question: "Do you support KYC or AML checks?",
+        question: "Do you offer KYC/AML options?",
         answer:
-          "We integrate with Algorand ecosystem KYC providers. You can enforce KYC flows at checkout or on an API-basis depending on your jurisdictional requirements.",
+          "We integrate with Algorand ecosystem KYC providers. You can enforce a KYC step directly in the checkout flow or conditionally via webhooks depending on jurisdiction.",
       },
     ],
   },

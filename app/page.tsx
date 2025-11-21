@@ -115,7 +115,40 @@ const x402Benefits = [
 ]
 
 const X402_REPO_URL = "https://github.com/coinbase/x402"
-const ALGORAND_URL = "https://www.algorand.com"
+const ALGORAND_URL = "https://algorand.co"
+
+const docHighlights = [
+  {
+    title: "Plans & pricing",
+    summary: "Create recurring products, define payout wallets, trials, coupons, and share hosted links in minutes.",
+    href: "/dashboard/plans",
+  },
+  {
+    title: "Micropayments & x402",
+    summary: "Throttle APIs, sell credits, or drop paywalls anywhere—SubChain handles HTTP 402 flows on Algorand.",
+    href: "/dashboard/micropayments",
+  },
+  {
+    title: "Wallet & identity",
+    summary: "Operators authenticate with JWTs while payouts land on your Algorand wallet; switch wallets anytime.",
+    href: "/dashboard/settings",
+  },
+  {
+    title: "Integrations & webhooks",
+    summary: "Trigger webhooks after every receipt, sync subscribers with your CRM, and pipe events to your stack.",
+    href: "/dashboard/integrations",
+  },
+  {
+    title: "Analytics & exports",
+    summary: "MRR, churn, receipts, and tax-ready CSVs are available in one click for finance and product teams.",
+    href: "/dashboard/analytics",
+  },
+  {
+    title: "Public checkout",
+    summary: "Every plan exposes a `/pay?plan=code` route so you can embed payments in docs, demos, or QR codes.",
+    href: "/dashboard/docs",
+  },
+]
 
 export default function HomePage() {
   return (
@@ -207,6 +240,46 @@ export default function HomePage() {
               </div>
             ))}
           </motion.div>
+        </section>
+
+        <section className="relative py-20">
+          <div className="mx-auto max-w-6xl space-y-10 px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <Badge className="mx-auto mb-4 border-white/20 bg-white/10 text-white/80">Documentation</Badge>
+              <h2 className="text-3xl font-semibold text-white md:text-4xl">Every feature, documented</h2>
+              <p className="mx-auto mt-3 max-w-3xl text-base text-white/70">
+                SubChain ships with a console-first experience and a full set of guides. Jump into the dashboard docs to
+                learn how we handle plans, payouts, x402 paywalls, integrations, analytics, and more.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {docHighlights.map((highlight) => (
+                <Card key={highlight.title} className="border-white/10 bg-white/5 text-white/80">
+                  <CardHeader>
+                    <CardTitle className="text-white text-lg">{highlight.title}</CardTitle>
+                    <CardDescription className="text-white/60">{highlight.summary}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link
+                      href={highlight.href}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-blue-200 hover:text-white"
+                    >
+                      Explore {highlight.title}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="text-center">
+              <Link href="/dashboard/docs">
+                <Button size="lg">
+                  Open dashboard docs
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
         </section>
 
         <section className="relative py-24">

@@ -25,10 +25,12 @@ import {
   Plug,
   Percent,
   Coins,
+  BookOpen,
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Documentation", href: "/dashboard/docs", icon: BookOpen },
   { name: "Plans", href: "/dashboard/plans", icon: CreditCard },
   { name: "Coupons", href: "/dashboard/coupons", icon: Percent },
   { name: "Subscribers", href: "/dashboard/subscribers", icon: Users },
